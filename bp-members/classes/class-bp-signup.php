@@ -2,10 +2,9 @@
 /**
  * Signups Management class.
  *
- * @since 2.0.0
- *
  * @package BuddyPress
  * @subpackage coreClasses
+ * @since 2.0.0
  */
 
 /**
@@ -587,7 +586,7 @@ class BP_Signup {
 
 				// Send the validation email.
 				} else {
-					bp_core_signup_send_validation_email( false, $signup->user_email, $signup->activation_key );
+					bp_core_signup_send_validation_email( false, $signup->user_email, $signup->activation_key, $signup->user_login );
 				}
 			}
 
@@ -737,7 +736,7 @@ class BP_Signup {
 		foreach ( $signups as $signup ) {
 			$user_id = username_exists( $signup->user_login );
 
-			if ( ! empty( $user_id ) && $signup->activation_key == wp_hash( $user_id ) ) {
+			if ( ! empty( $user_id ) && $signup->activation_key === bp_get_user_meta( $user_id, 'activation_key', true ) ) {
 
 				if ( 2 != self::check_user_status( $user_id ) ) {
 
