@@ -435,6 +435,30 @@ function bp_core_get_admin_tabs( $active_tab = '' ) {
 		),
 	);
 
+// XTEC ************ AFEGIT - Removed tabs in Settings > BuddyPress. Actual access to tabs is 
+//                            blocked in theme. This removal is to avoid admins seeing something 
+//                            where they cannot access.
+// 2014.09.10 @aginard
+
+    if (!is_xtecadmin()) {
+        unset($tabs[1]); // Pages tab
+        unset($tabs[2]); // Settings tab
+    }
+
+//************ FI
+
+	// If forums component is active, add additional tab.
+	if ( bp_is_active( 'forums' ) && class_exists( 'BP_Forums_Component' ) ) {
+
+		// Enqueue thickbox.
+		wp_enqueue_script( 'thickbox' );
+		wp_enqueue_style( 'thickbox' );
+
+		$tabs['3'] = array(
+			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bb-forums-setup'  ), 'admin.php' ) ),
+			'name' => __( 'Forums', 'buddypress' )
+		);
+	}
 	/**
 	 * Filters the tab data used in our wp-admin screens.
 	 *
