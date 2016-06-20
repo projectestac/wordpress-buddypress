@@ -442,7 +442,6 @@ function bp_core_get_admin_tabs( $active_tab = '' ) {
 
     if (!is_xtecadmin()) {
         unset($tabs[1]); // Pages tab
-        unset($tabs[2]); // Settings tab
     }
 
 //************ FI
