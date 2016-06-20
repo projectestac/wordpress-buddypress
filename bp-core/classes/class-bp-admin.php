@@ -381,6 +381,11 @@ class BP_Admin {
 	public function register_admin_settings() {
 
 		/* Main Section ******************************************************/
+		
+		//XTEC ************ AFEGIT ­Hidden setting options to all users except to xtecadmin
+		//2016.06.21 @xaviernietosanchez ­ reference
+		if( is_xtecadmin() ){
+		//************ FI
 
 		// Add the main section.
 		add_settings_section( 'bp_main', __( 'Main Settings', 'buddypress' ), 'bp_admin_setting_callback_main_section', 'buddypress' );
@@ -476,6 +481,12 @@ class BP_Admin {
 				register_setting( 'buddypress', '_bp_enable_akismet', 'intval' );
 			}
 		}
+
+		//XTEC ************ AFEGIT ­Hidden setting options to all users except to xtecadmin
+		//2016.06.21 @xaviernietosanchez ­ reference
+  		}
+		//************ FI
+
 	}
 
 	/**
