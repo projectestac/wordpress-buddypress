@@ -6864,9 +6864,10 @@ msgstr "%1$s a les %2$s"
 msgid "%s Directory"
 msgstr "Directori %s"
 
+# MODIFICAT XTEC
 #: bp-core/bp-core-template.php:103
 msgid "Options"
-msgstr "Opcions"
+msgstr "Paràmetres"
 
 #: bp-core/bp-core-functions.php:2417 bp-core/bp-core-widgets.php:120
 #: bp-core/deprecated/2.1.php:239 bp-themes/bp-default/sidebar.php:52
