@@ -4,12 +4,12 @@
 # This file is distributed under the same license as the Stable (latest release) package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2016-04-13 13:33+0200\n"
+"PO-Revision-Date: 2016-10-18 13:14+0200\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Poedit 1.8.4\n"
+"X-Generator: Poedit 1.8.7.1\n"
 "Project-Id-Version: Stable (latest release)\n"
 "POT-Creation-Date: \n"
 "Last-Translator: Mònica Grau <mgrau226@xtec.cat>\n"
@@ -1970,8 +1970,8 @@ msgid ""
 "Your account was activated successfully! You can now <a href=\"%s\">log in</a> with "
 "the username and password you provided when you signed up."
 msgstr ""
-"El compte s'ha activat correctament! Podeu ara <a href=\"%s\">iniciar sessió</a> amb "
-"el nom d'usuari i contrasenya que hey proporcianat quan us heu registrat."
+"El compte s'ha activat correctament! Podeu <a href=\"%s\">iniciar sessió</a> amb el "
+"nom d'usuari i contrasenya que heu proporcionat quan us heu registrat."
 
 #: bp-templates/bp-legacy/buddypress/members/activate.php:48
 #: bp-themes/bp-default/registration/activate.php:30
@@ -4135,8 +4135,7 @@ msgid "Emails Sent"
 msgstr "Correos electrònics enviats"
 
 #: bp-members/admin/bp-members-admin-classes.php:98
-#: bp-members/admin/bp-members-admin-classes.php:482
-#: bp-members/bp-members-admin.php:1327
+#: bp-members/admin/bp-members-admin-classes.php:482 bp-members/bp-members-admin.php:1327
 msgctxt "signup users"
 msgid "Pending %s"
 msgstr "Pendents %s"
@@ -5061,8 +5060,7 @@ msgstr "%1$s ha publicat una actualització en el node %2$s"
 msgid "As the only admin, you cannot leave the group."
 msgstr "Com a administrador, no podeu deixar el node."
 
-#: bp-groups/bp-groups-functions.php:165
-#: bp-groups/classes/class-bp-groups-member.php:278
+#: bp-groups/bp-groups-functions.php:165 bp-groups/classes/class-bp-groups-member.php:278
 msgid "Group Admin"
 msgstr "Administrador del node"
 
@@ -6495,8 +6493,7 @@ msgstr "Autors del bloc"
 
 #: bp-core/deprecated/2.1.php:440 bp-groups/bp-groups-admin.php:986
 #: bp-templates/bp-legacy/buddypress/groups/single/admin.php:468
-#: bp-themes/bp-default/groups/single/admin.php:360
-#: bp-xprofile/bp-xprofile-admin.php:151
+#: bp-themes/bp-default/groups/single/admin.php:360 bp-xprofile/bp-xprofile-admin.php:151
 msgid "Delete Group"
 msgstr "Esborra el node"
 
@@ -6713,19 +6710,16 @@ msgstr "El fitxer pujat excedeix la mida màxima permesa de: %s"
 msgid "The uploaded file was only partially uploaded."
 msgstr "Solament s'ha penjat el fitxer parcialment."
 
-#: bp-core/classes/class-bp-attachment-avatar.php:407
-#: bp-groups/bp-groups-actions.php:343
+#: bp-core/classes/class-bp-attachment-avatar.php:407 bp-groups/bp-groups-actions.php:343
 msgid "The group profile photo was uploaded successfully."
 msgstr "La foto de perfil de node s'ha penjat correctament."
 
-#: bp-core/classes/class-bp-attachment-avatar.php:408
-#: bp-groups/bp-groups-screens.php:950
+#: bp-core/classes/class-bp-attachment-avatar.php:408 bp-groups/bp-groups-screens.php:950
 msgid "There was a problem deleting the group profile photo. Please try again."
 msgstr ""
 "S'ha produït un problema en actualitzar la foto del perfil del node. Proveu-ho de nou."
 
-#: bp-core/classes/class-bp-attachment-avatar.php:409
-#: bp-groups/bp-groups-screens.php:948
+#: bp-core/classes/class-bp-attachment-avatar.php:409 bp-groups/bp-groups-screens.php:948
 msgid "The group profile photo was deleted successfully!"
 msgstr "La foto del perfil de node s'ha suprimit correctament!"
 
@@ -6739,8 +6733,7 @@ msgstr "S'ha produït un error en suprimir la foto del perfil. Proveu-ho de nou.
 msgid "Your profile photo was deleted successfully!"
 msgstr "La fotografia del perfil s'ha suprimit correctament!"
 
-#: bp-core/classes/class-bp-attachment-avatar.php:406
-#: bp-groups/bp-groups-screens.php:993
+#: bp-core/classes/class-bp-attachment-avatar.php:406 bp-groups/bp-groups-screens.php:993
 msgid "There was a problem cropping the group profile photo."
 msgstr "S'ha produït un error en escapçar la foto del perfil de node."
 
@@ -7075,8 +7068,8 @@ msgstr ""
 "Aquest usuari s'ha marcat com creador de brossa. Només els administradors del lloc "
 "poden veure aquest perfil."
 
-#: bp-core/bp-core-caps.php:384 bp-core/bp-core-caps.php:396
-#: bp-core/bp-core-caps.php:410 bp-core/bp-core-caps.php:420
+#: bp-core/bp-core-caps.php:384 bp-core/bp-core-caps.php:396 bp-core/bp-core-caps.php:410
+#: bp-core/bp-core-caps.php:420
 msgid "Special community roles no longer exist. Use mapped capabilities instead"
 msgstr "Els rols de comunitat especials ja no existeixen. Useu capacitats per contra"
 
@@ -7942,8 +7935,7 @@ msgstr "Fòrums"
 msgid "Settings"
 msgstr "Paràmetres"
 
-#: bp-core/admin/bp-core-admin-functions.php:423
-#: bp-core/admin/bp-core-admin-slugs.php:24
+#: bp-core/admin/bp-core-admin-functions.php:423 bp-core/admin/bp-core-admin-slugs.php:24
 msgid "Pages"
 msgstr "Pàgines"
 
@@ -7964,13 +7956,12 @@ msgstr ""
 "següents pàgines del WordPress tenen associat més d'un component a la vegada: %2$s. <a "
 "href=\"%1$s\">Repara</a>"
 
-#: bp-core/admin/bp-core-admin-functions.php:273
-#: bp-core/admin/bp-core-admin-slugs.php:86 bp-members/bp-members-adminbar.php:62
+#: bp-core/admin/bp-core-admin-functions.php:273 bp-core/admin/bp-core-admin-slugs.php:86
+#: bp-members/bp-members-adminbar.php:62
 msgid "Register"
 msgstr "Registre"
 
-#: bp-core/admin/bp-core-admin-functions.php:268
-#: bp-core/admin/bp-core-admin-slugs.php:87
+#: bp-core/admin/bp-core-admin-functions.php:268 bp-core/admin/bp-core-admin-slugs.php:87
 #: bp-members/admin/bp-members-admin-classes.php:291
 #: bp-members/admin/bp-members-admin-classes.php:295
 #: bp-members/admin/bp-members-admin-classes.php:667
@@ -8702,10 +8693,10 @@ msgstr "%s ha respost a una de les vostres actualitzacions"
 #: bp-activity/bp-activity-notifications.php:98
 #: bp-activity/bp-activity-notifications.php:215
 #: bp-activity/bp-activity-notifications.php:303 bp-core/deprecated/1.5.php:370
-#: bp-friends/bp-friends-notifications.php:56
-#: bp-friends/bp-friends-notifications.php:144 bp-groups/bp-groups-notifications.php:90
-#: bp-groups/bp-groups-notifications.php:229 bp-groups/bp-groups-notifications.php:348
-#: bp-groups/bp-groups-notifications.php:454 bp-groups/bp-groups-notifications.php:570
+#: bp-friends/bp-friends-notifications.php:56 bp-friends/bp-friends-notifications.php:144
+#: bp-groups/bp-groups-notifications.php:90 bp-groups/bp-groups-notifications.php:229
+#: bp-groups/bp-groups-notifications.php:348 bp-groups/bp-groups-notifications.php:454
+#: bp-groups/bp-groups-notifications.php:570
 msgid "To disable these notifications please log in and go to: %s"
 msgstr "Per a desactivar aquests avisos, connecteu-vos i aneu a: %s"
 
