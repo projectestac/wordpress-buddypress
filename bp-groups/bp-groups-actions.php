@@ -15,6 +15,21 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Fire the 'bp_groups_register_group_types' action.
+ *
+ * @since 2.6.0
+ */
+function bp_groups_register_group_types() {
+	/**
+	 * Fires when it's appropriate to register group types.
+	 *
+	 * @since 2.6.0
+	 */
+	do_action( 'bp_groups_register_group_types' );
+}
+add_action( 'bp_register_taxonomies', 'bp_groups_register_group_types' );
+
+/**
  * Protect access to single groups.
  *
  * @since 2.1.0
@@ -122,8 +137,8 @@ function groups_action_create_group() {
 		unset( $bp->groups->current_create_step );
 		unset( $bp->groups->completed_create_steps );
 
-		setcookie( 'bp_new_group_id', false, time() - 1000, COOKIEPATH );
-		setcookie( 'bp_completed_create_steps', false, time() - 1000, COOKIEPATH );
+		setcookie( 'bp_new_group_id', false, time() - 1000, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
+		setcookie( 'bp_completed_create_steps', false, time() - 1000, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
 
 		$reset_steps = true;
 		$keys        = array_keys( $bp->groups->group_creation_steps );
@@ -143,7 +158,7 @@ function groups_action_create_group() {
 	// Set the ID of the new group, if it has already been created in a previous step.
 	if ( isset( $_COOKIE['bp_new_group_id'] ) ) {
 		$bp->groups->new_group_id = (int) $_COOKIE['bp_new_group_id'];
-		$bp->groups->current_group = groups_get_group( array( 'group_id' => $bp->groups->new_group_id ) );
+		$bp->groups->current_group = groups_get_group( $bp->groups->new_group_id );
 
 		// Only allow the group creator to continue to edit the new group.
 		if ( ! bp_is_group_creator( $bp->groups->current_group, bp_loggedin_user_id() ) ) {
@@ -193,6 +208,11 @@ function groups_action_create_group() {
 			if ( !$bp->groups->new_group_id = groups_create_group( array( 'group_id' => $bp->groups->new_group_id, 'status' => $group_status, 'enable_forum' => $group_enable_forum ) ) ) {
 				bp_core_add_message( __( 'There was an error saving group details. Please try again.', 'buddypress' ), 'error' );
 				bp_core_redirect( trailingslashit( bp_get_groups_directory_permalink() . 'create/step/' . bp_get_groups_current_create_step() ) );
+			}
+
+			// Save group types.
+			if ( ! empty( $_POST['group-types'] ) ) {
+				bp_groups_set_group_type( $bp->groups->new_group_id, $_POST['group-types'] );
 			}
 
 			/**
@@ -252,8 +272,8 @@ function groups_action_create_group() {
 			$bp->groups->completed_create_steps[] = bp_get_groups_current_create_step();
 
 		// Reset cookie info.
-		setcookie( 'bp_new_group_id', $bp->groups->new_group_id, time()+60*60*24, COOKIEPATH );
-		setcookie( 'bp_completed_create_steps', base64_encode( json_encode( $bp->groups->completed_create_steps ) ), time()+60*60*24, COOKIEPATH );
+		setcookie( 'bp_new_group_id', $bp->groups->new_group_id, time()+60*60*24, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
+		setcookie( 'bp_completed_create_steps', base64_encode( json_encode( $bp->groups->completed_create_steps ) ), time()+60*60*24, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
 
 		// If we have completed all steps and hit done on the final step we
 		// can redirect to the completed group.
@@ -262,8 +282,8 @@ function groups_action_create_group() {
 			unset( $bp->groups->current_create_step );
 			unset( $bp->groups->completed_create_steps );
 
-			setcookie( 'bp_new_group_id', false, time() - 3600, COOKIEPATH );
-			setcookie( 'bp_completed_create_steps', false, time() - 3600, COOKIEPATH );
+			setcookie( 'bp_new_group_id', false, time() - 3600, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
+			setcookie( 'bp_completed_create_steps', false, time() - 3600, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
 
 			// Once we completed all steps, record the group creation in the activity stream.
 			groups_record_activity( array(
@@ -551,3 +571,29 @@ function groups_action_group_feed() {
 	) );
 }
 add_action( 'bp_actions', 'groups_action_group_feed' );
+
+/**
+ * Update orphaned child groups when the parent is deleted.
+ *
+ * @since 2.7.0
+ *
+ * @param BP_Groups_Group $group Instance of the group item being deleted.
+ */
+function bp_groups_update_orphaned_groups_on_group_delete( $group ) {
+	// Get child groups and set the parent to the deleted parent's parent.
+	$grandparent_group_id = $group->parent_id;
+	$child_args = array(
+		'parent_id'         => $group->id,
+		'show_hidden'       => true,
+		'per_page'          => false,
+		'update_meta_cache' => false,
+	);
+	$children = groups_get_groups( $child_args );
+	$children = $children['groups'];
+
+	foreach ( $children as $cgroup ) {
+		$cgroup->parent_id = $grandparent_group_id;
+		$cgroup->save();
+	}
+}
+add_action( 'bp_groups_delete_group', 'bp_groups_update_orphaned_groups_on_group_delete', 10, 2 );

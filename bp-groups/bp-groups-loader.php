@@ -14,10 +14,12 @@
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
-require dirname( __FILE__ ) . '/classes/class-bp-groups-component.php';
+if ( ! buddypress()->do_autoload ) {
+	require dirname( __FILE__ ) . '/classes/class-bp-groups-component.php';
+}
 
 /**
- * Bootstrap the Notifications component.
+ * Set up the bp-groups component.
  *
  * @since 1.5.0
  */

@@ -175,7 +175,7 @@ add_action( 'bp_setup_globals', 'bp_core_set_avatar_globals' );
  *                                   local avatar. In some cases, this may be undesirable, in which
  *                                   case 'no_grav' should be set to true. To disable Gravatar
  *                                   fallbacks globally, see the 'bp_core_fetch_avatar_no_grav' filter.
- *                                   Default: false.
+ *                                   Default: true for groups, otherwise false.
  *     @type bool       $html        Whether to return an <img> HTML element, vs a raw URL
  *                                   to an avatar. If false, <img>-specific arguments (like 'css_id')
  *                                   will be ignored. Default: true.
@@ -211,7 +211,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 		'css_id'        => false,
 		'alt'           => '',
 		'email'         => false,
-		'no_grav'       => false,
+		'no_grav'       => null,
 		'html'          => true,
 		'title'         => '',
 		'extra_attr'    => '',
@@ -313,7 +313,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 				break;
 
 			case 'group' :
-				$item_name = bp_get_group_name( groups_get_group( array( 'group_id' => $params['item_id'] ) ) );
+				$item_name = bp_get_group_name( groups_get_group( $params['item_id'] ) );
 				break;
 
 			case 'user'  :
@@ -564,6 +564,11 @@ function bp_core_fetch_avatar( $args = '' ) {
 		}
 	}
 
+	// By default, Gravatar is not pinged for groups.
+	if ( null === $params['no_grav'] ) {
+		$params['no_grav'] = 'group' === $params['object'];
+	}
+
 	/**
 	 * Filters whether or not to skip Gravatar check.
 	 *
@@ -636,6 +641,17 @@ function bp_core_fetch_avatar( $args = '' ) {
 		if ( ! empty( $params['rating'] ) ) {
 			$url_args['r'] = strtolower( $params['rating'] );
 		}
+
+		/**
+		 * Filters the Gravatar "d" parameter.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $default_grav The avatar default.
+		 * @param array  $params       The avatar's data.
+		 */
+		$default_grav = apply_filters( 'bp_core_avatar_default', $default_grav, $params );
+
 		// Only set default image if 'Gravatar Logo' is not requested.
 		if ( 'gravatar_default' !== $default_grav ) {
 			$url_args['d'] = $default_grav;
@@ -660,7 +676,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 		 * @param string $value  Default avatar for non-gravatar requests.
 		 * @param array  $params Array of parameters for the avatar request.
 		 */
-		$gravatar = apply_filters( 'bp_core_default_avatar_' . $params['object'], bp_core_avatar_default( 'local' ), $params );
+		$gravatar = apply_filters( 'bp_core_default_avatar_' . $params['object'], bp_core_avatar_default( 'local', $params ), $params );
 	}
 
 	if ( true === $params['html'] ) {
@@ -710,7 +726,7 @@ function bp_core_delete_existing_avatar( $args = '' ) {
 	 *
 	 * @since 2.5.1
 	 *
-	 * @param bool $value Whether or not to delete the avatar.
+	 * @param bool  $value Whether or not to delete the avatar.
 	 * @param array $args {
 	 *     Array of function parameters.
 	 *
@@ -789,7 +805,7 @@ function bp_core_delete_existing_avatar( $args = '' ) {
  *
  * @since 2.3.0
  *
- * @return string|null A json object containing success data if the avatar was deleted
+ * @return string|null A JSON object containing success data if the avatar was deleted,
  *                     error message otherwise.
  */
 function bp_avatar_ajax_delete() {
@@ -932,8 +948,8 @@ function bp_core_avatar_handle_upload( $file, $upload_dir_filter ) {
  *
  * @since 2.3.0
  *
- * @return  string|null A json object containing success data if the upload succeeded
- *                      error message otherwise.
+ * @return string|null A JSON object containing success data if the upload succeeded
+ *                     error message otherwise.
  */
 function bp_avatar_ajax_upload() {
 	// Bail if not a POST action.
@@ -943,7 +959,7 @@ function bp_avatar_ajax_upload() {
 
 	/**
 	 * Sending the json response will be different if
-	 * the current Plupload runtime is html4
+	 * the current Plupload runtime is html4.
 	 */
 	$is_html4 = false;
 	if ( ! empty( $_POST['html4' ] ) ) {
@@ -989,10 +1005,7 @@ function bp_avatar_ajax_upload() {
 
 		if ( ! bp_get_current_group_id() && ! empty( $bp_params['item_id'] ) ) {
 			$needs_reset = array( 'component' => 'groups', 'key' => 'current_group', 'value' => $bp->groups->current_group );
-			$bp->groups->current_group = groups_get_group( array(
-				'group_id'        => $bp_params['item_id'],
-				'populate_extras' => false,
-			) );
+			$bp->groups->current_group = groups_get_group( $bp_params['item_id'] );
 		}
 	} else {
 		/**
@@ -1038,8 +1051,9 @@ function bp_avatar_ajax_upload() {
 		// Remove template message.
 		$bp->template_message      = false;
 		$bp->template_message_type = false;
-		@setcookie( 'bp-message', false, time() - 1000, COOKIEPATH );
-		@setcookie( 'bp-message-type', false, time() - 1000, COOKIEPATH );
+
+		@setcookie( 'bp-message', false, time() - 1000, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
+		@setcookie( 'bp-message-type', false, time() - 1000, COOKIEPATH, COOKIE_DOMAIN, is_ssl() );
 	}
 
 	if ( empty( $avatar ) ) {
@@ -1154,16 +1168,6 @@ function bp_avatar_handle_capture( $data = '', $item_id = 0 ) {
 /**
  * Crop an uploaded avatar.
  *
- * $args has the following parameters:
- *  object - What component the avatar is for, e.g. "user"
- *  avatar_dir  The absolute path to the avatar
- *  item_id - Item ID
- *  original_file - The absolute path to the original avatar file
- *  crop_w - Crop width
- *  crop_h - Crop height
- *  crop_x - The horizontal starting point of the crop
- *  crop_y - The vertical starting point of the crop
- *
  * @since 1.1.0
  *
  * @param array|string $args {
@@ -1229,8 +1233,8 @@ function bp_core_avatar_handle_crop( $args = '' ) {
  *
  * @since 2.3.0
  *
- * @return  string|null A json object containing success data if the crop/capture succeeded
- *                      error message otherwise.
+ * @return string|null A JSON object containing success data if the crop/capture succeeded
+ *                     error message otherwise.
  */
 function bp_avatar_ajax_set() {
 	// Bail if not a POST action.
@@ -1380,9 +1384,10 @@ add_action( 'wp_ajax_bp_avatar_set', 'bp_avatar_ajax_set' );
 function bp_core_fetch_avatar_filter( $avatar, $user, $size, $default, $alt = '', $args = array() ) {
 	global $pagenow;
 
-	// Do not filter if inside WordPress options page.
-	if ( 'options-discussion.php' == $pagenow )
+	// Don't filter if inside WordPress options page and force_default is true.
+	if ( 'options-discussion.php' === $pagenow && true === $args['force_default'] ) {
 		return $avatar;
+	}
 
 	// If passed an object, assume $user->user_id.
 	if ( is_object( $user ) ) {
@@ -1494,6 +1499,8 @@ function bp_core_check_avatar_size( $file ) {
  * Get allowed avatar types.
  *
  * @since 2.3.0
+ *
+ * @return array
  */
 function bp_core_get_allowed_avatar_types() {
 	$allowed_types = bp_attachments_get_allowed_types( 'avatar' );
@@ -1520,6 +1527,8 @@ function bp_core_get_allowed_avatar_types() {
  * Get allowed avatar mime types.
  *
  * @since 2.3.0
+ *
+ * @return array
  */
 function bp_core_get_allowed_avatar_mimes() {
 	$allowed_types  = bp_core_get_allowed_avatar_types();
@@ -1623,8 +1632,6 @@ function bp_core_get_upload_dir( $type = 'upload_path' ) {
  *
  * @since 1.2.0
  *
- * @uses bp_core_get_upload_dir() To get upload directory info.
- *
  * @return string Absolute path to WP upload directory.
  */
 function bp_core_avatar_upload_path() {
@@ -1643,8 +1650,6 @@ function bp_core_avatar_upload_path() {
  * Get the raw base URL for root site upload location.
  *
  * @since 1.2.0
- *
- * @uses bp_core_get_upload_dir() To get upload directory info.
  *
  * @return string Full URL to current upload location.
  */
@@ -1674,7 +1679,7 @@ function bp_get_user_has_avatar( $user_id = 0 ) {
 		$user_id = bp_displayed_user_id();
 
 	$retval = false;
-	if ( bp_core_fetch_avatar( array( 'item_id' => $user_id, 'no_grav' => true, 'html' => false ) ) != bp_core_avatar_default( 'local' ) )
+	if ( bp_core_fetch_avatar( array( 'item_id' => $user_id, 'no_grav' => true, 'html' => false, 'type' => 'full' ) ) != bp_core_avatar_default( 'local' ) )
 		$retval = true;
 
 	/**
@@ -1833,34 +1838,53 @@ function bp_core_avatar_original_max_filesize() {
  * Get the URL of the 'full' default avatar.
  *
  * @since 1.5.0
+ * @since 2.6.0 Introduced `$params` and `$object_type` parameters.
  *
- * @param string $type 'local' if the fallback should be the locally-hosted version
- *                     of the mystery-person, 'gravatar' if the fallback should be
- *                     Gravatar's version. Default: 'gravatar'.
+ * @param string $type   'local' if the fallback should be the locally-hosted version
+ *                       of the mystery person, 'gravatar' if the fallback should be
+ *                       Gravatar's version. Default: 'gravatar'.
+ * @param array  $params Parameters passed to bp_core_fetch_avatar().
  * @return string The URL of the default avatar.
  */
-function bp_core_avatar_default( $type = 'gravatar' ) {
+function bp_core_avatar_default( $type = 'gravatar', $params = array() ) {
 	// Local override.
 	if ( defined( 'BP_AVATAR_DEFAULT' ) ) {
 		$avatar = BP_AVATAR_DEFAULT;
 
 	// Use the local default image.
 	} elseif ( 'local' === $type ) {
-		$avatar = buddypress()->plugin_url . 'bp-core/images/mystery-man.jpg';
+		$size = '';
+		if (
+			( isset( $params['type'] ) && 'thumb' === $params['type'] && bp_core_avatar_thumb_width() <= 50 ) ||
+			( isset( $params['width'] ) && $params['width'] <= 50 )
+		) {
+
+			$size = '-50';
+		}
+
+		$avatar = buddypress()->plugin_url . "bp-core/images/mystery-man{$size}.jpg";
 
 	// Use Gravatar's mystery person as fallback.
 	} else {
-		$avatar = '//www.gravatar.com/avatar/00000000000000000000000000000000?d=mm&amp;s=' . bp_core_avatar_full_width();
+		$size = '';
+		if ( isset( $params['type'] ) && 'thumb' === $params['type'] ) {
+			$size = bp_core_avatar_thumb_width();
+		} else {
+			$size = bp_core_avatar_full_width();
+		}
+		$avatar = '//www.gravatar.com/avatar/00000000000000000000000000000000?d=mm&amp;s=' . $size;
 	}
 
 	/**
 	 * Filters the URL of the 'full' default avatar.
 	 *
 	 * @since 1.5.0
+	 * @since 2.6.0 Added `$params`.
 	 *
 	 * @param string $avatar URL of the default avatar.
+	 * @param array  $params Params provided to bp_core_fetch_avatar().
 	 */
-	return apply_filters( 'bp_core_avatar_default', $avatar );
+	return apply_filters( 'bp_core_avatar_default', $avatar, $params );
 }
 
 /**
@@ -1870,13 +1894,15 @@ function bp_core_avatar_default( $type = 'gravatar' ) {
  * defined.
  *
  * @since 1.5.0
+ * @since 2.6.0 Introduced `$object_type` parameter.
  *
- * @param string $type 'local' if the fallback should be the locally-hosted version
- *                     of the mystery-person, 'gravatar' if the fallback should be
- *                     Gravatar's version. Default: 'gravatar'.
+ * @param string $type   'local' if the fallback should be the locally-hosted version
+ *                       of the mystery person, 'gravatar' if the fallback should be
+ *                       Gravatar's version. Default: 'gravatar'.
+ * @param array  $params Parameters passed to bp_core_fetch_avatar().
  * @return string The URL of the default avatar thumb.
  */
-function bp_core_avatar_default_thumb( $type = 'gravatar' ) {
+function bp_core_avatar_default_thumb( $type = 'gravatar', $params = array() ) {
 	// Local override.
 	if ( defined( 'BP_AVATAR_DEFAULT_THUMB' ) ) {
 		$avatar = BP_AVATAR_DEFAULT_THUMB;
@@ -1894,10 +1920,12 @@ function bp_core_avatar_default_thumb( $type = 'gravatar' ) {
 	 * Filters the URL of the 'thumb' default avatar.
 	 *
 	 * @since 1.5.0
+	 * @since 2.6.0 Added `$params`.
 	 *
 	 * @param string $avatar URL of the default avatar.
+	 * @param string $params Params provided to bp_core_fetch_avatar().
 	 */
-	return apply_filters( 'bp_core_avatar_thumb', $avatar );
+	return apply_filters( 'bp_core_avatar_thumb', $avatar, $params );
 }
 
 /**
@@ -1907,13 +1935,7 @@ function bp_core_avatar_default_thumb( $type = 'gravatar' ) {
  * parameter of the WordPress main query to this posted var. To avoid
  * notices, we need to make sure this 'week' query var is reset to 0.
  *
- * @since  2.2.0
- *
- * @uses   bp_is_group_create()
- * @uses   bp_is_group_admin_page()
- * @uses   bp_is_group_admin_screen() to check for a group admin screen
- * @uses   bp_action_variable() to check for the group's avatar creation step
- * @uses   bp_is_user_change_avatar() to check for the user's change profile screen
+ * @since 2.2.0
  *
  * @param WP_Query|null $posts_query The main query object.
  */
@@ -1947,7 +1969,7 @@ add_action( 'bp_parse_query', 'bp_core_avatar_reset_query', 10, 1 );
 /**
  * Checks whether Avatar UI should be loaded.
  *
- * @since  2.3.0
+ * @since 2.3.0
  *
  * @return bool True if Avatar UI should load, false otherwise.
  */
@@ -1979,7 +2001,7 @@ function bp_avatar_is_front_edit() {
 	 * - Load the avatar UI for a component that is !groups or !user (return true regarding your conditions)
 	 * - Completely disable the avatar UI introduced in 2.3 (eg: __return_false())
 	 *
-	 * @since  2.3.0
+	 * @since 2.3.0
 	 *
 	 * @param bool $retval Whether or not to load the Avatar UI.
 	 */
@@ -1989,7 +2011,7 @@ function bp_avatar_is_front_edit() {
 /**
  * Checks whether the Webcam Avatar UI part should be loaded.
  *
- * @since  2.3.0
+ * @since 2.3.0
  *
  * @global $is_safari
  * @global $is_IE
@@ -2010,7 +2032,7 @@ function bp_avatar_use_webcam() {
 	/**
 	 * Bail when the browser does not support getUserMedia.
 	 *
-	 * @see  http://caniuse.com/#feat=stream
+	 * @see http://caniuse.com/#feat=stream
 	 */
 	if ( $is_safari || $is_IE || ( $is_chrome && ! is_ssl() ) ) {
 		return false;
@@ -2030,7 +2052,7 @@ function bp_avatar_use_webcam() {
 /**
  * Template function to load the Avatar UI javascript templates.
  *
- * @since  2.3.0
+ * @since 2.3.0
  */
 function bp_avatar_get_templates() {
 	if ( ! bp_avatar_is_front_edit() ) {
@@ -2046,7 +2068,7 @@ function bp_avatar_get_templates() {
  * If the "avatar templates" are not including the new template tag, this will
  * help users to get the avatar UI.
  *
- * @since  2.3.0
+ * @since 2.3.0
  */
 function bp_avatar_template_check() {
 	if ( ! bp_avatar_is_front_edit() ) {

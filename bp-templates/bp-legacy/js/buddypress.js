@@ -265,7 +265,8 @@ jq(document).ready( function() {
 
 		/* Reset the page */
 		jq.cookie( 'bp-activity-oldestpage', 1, {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		} );
 
 		/* Activity Stream Tabs */
@@ -307,6 +308,11 @@ jq(document).ready( function() {
 
 		/* Favoriting activity stream items */
 		if ( target.hasClass('fav') || target.hasClass('unfav') ) {
+			/* Bail if a request is in progress */
+			if ( target.hasClass( 'loading' ) ) {
+				return false;
+			}
+
 			type      = target.hasClass('fav') ? 'fav' : 'unfav';
 			parent    = target.closest('.activity-item');
 			parent_id = parent.attr('id').substr( 9, parent.attr('id').length );
@@ -438,7 +444,8 @@ jq(document).ready( function() {
 
 			if ( null === jq.cookie('bp-activity-oldestpage') ) {
 				jq.cookie('bp-activity-oldestpage', 1, {
-					path: '/'
+					path: '/',
+					secure: ( 'https:' === window.location.protocol )
 				} );
 			}
 
@@ -467,7 +474,8 @@ jq(document).ready( function() {
 			{
 				jq('#buddypress li.load-more').removeClass('loading');
 				jq.cookie( 'bp-activity-oldestpage', oldest_page, {
-					path: '/'
+					path: '/',
+					secure: ( 'https:' === window.location.protocol )
 				} );
 				jq('#buddypress ul.activity-list').append(response.contents);
 
@@ -844,12 +852,13 @@ jq(document).ready( function() {
 		}
 
 		var target = jq(event.target),
-			css_id, object, template;
+			css_id, object, template, search_terms;
 
 		if ( target.attr('type') === 'submit' ) {
 			css_id = jq('.item-list-tabs li.selected').attr('id').split( '-' );
 			object = css_id[0];
 			template = null;
+			search_terms = target.parent().find( '#' + object + '_search' ).val();
 
 			// The Group Members page specifies its own template
 			if ( event.currentTarget.className === 'groups-members-search' ) {
@@ -857,7 +866,7 @@ jq(document).ready( function() {
 				template = 'groups/single/members';
 			}
 
-			bp_filter_request( object, jq.cookie('bp-' + object + '-filter'), jq.cookie('bp-' + object + '-scope') , 'div.' + object, target.parent().children('label').children('input').val(), 1, jq.cookie('bp-' + object + '-extras'), null, template );
+			bp_filter_request( object, jq.cookie('bp-' + object + '-filter'), jq.cookie('bp-' + object + '-scope') , 'div.' + object, search_terms, 1, jq.cookie('bp-' + object + '-extras'), null, template );
 
 			return false;
 		}
@@ -867,6 +876,11 @@ jq(document).ready( function() {
 
 	/* When a navigation tab is clicked - e.g. | All Groups | My Groups | */
 	jq('div.item-list-tabs').on( 'click', function(event) {
+		// If on a directory page with a type filter, add no-ajax class.
+		if ( jq( 'body' ).hasClass( 'type' ) && jq( 'body' ).hasClass( 'directory' ) ) {
+			jq(this).addClass( 'no-ajax' );
+		}
+
 		if ( jq(this).hasClass('no-ajax')  || jq( event.target ).hasClass('no-ajax') )  {
 			return;
 		}
@@ -1756,25 +1770,31 @@ jq(document).ready( function() {
 	/* Clear BP cookies on logout */
 	jq('#wp-admin-bar-logout, a.logout').on( 'click', function() {
 		jq.removeCookie('bp-activity-scope', {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		});
 		jq.removeCookie('bp-activity-filter', {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		});
 		jq.removeCookie('bp-activity-oldestpage', {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		});
 
 		var objects = [ 'members', 'groups', 'blogs', 'forums' ];
 		jq(objects).each( function(i) {
 			jq.removeCookie('bp-' + objects[i] + '-scope', {
-				path: '/'
+				path: '/',
+				secure: ( 'https:' === window.location.protocol )
 			} );
 			jq.removeCookie('bp-' + objects[i] + '-filter', {
-				path: '/'
+				path: '/',
+				secure: ( 'https:' === window.location.protocol )
 			} );
 			jq.removeCookie('bp-' + objects[i] + '-extras', {
-				path: '/'
+				path: '/',
+				secure: ( 'https:' === window.location.protocol )
 			} );
 		});
 	});
@@ -1850,7 +1870,8 @@ jq(document).ready( function() {
 function bp_init_activity() {
 	/* Reset the page */
 	jq.cookie( 'bp-activity-oldestpage', 1, {
-		path: '/'
+		path: '/',
+		secure: ( 'https:' === window.location.protocol )
 	} );
 
 	if ( undefined !== jq.cookie('bp-activity-filter') && jq('#activity-filter-select').length ) {
@@ -1894,13 +1915,16 @@ function bp_filter_request( object, filter, scope, target, search_terms, page, e
 
 	/* Save the settings we want to remain persistent to a cookie */
 	jq.cookie( 'bp-' + object + '-scope', scope, {
-		path: '/'
+		path: '/',
+		secure: ( 'https:' === window.location.protocol )
 	} );
 	jq.cookie( 'bp-' + object + '-filter', filter, {
-		path: '/'
+		path: '/',
+		secure: ( 'https:' === window.location.protocol )
 	} );
 	jq.cookie( 'bp-' + object + '-extras', extras, {
-		path: '/'
+		path: '/',
+		secure: ( 'https:' === window.location.protocol )
 	} );
 
 	/* Set the correct selected nav and filter */
@@ -1958,16 +1982,19 @@ function bp_activity_request(scope, filter) {
 	/* Save the type and filter to a session cookie */
 	if ( null !== scope ) {
 		jq.cookie( 'bp-activity-scope', scope, {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		} );
 	}
 	if ( null !== filter ) {
 		jq.cookie( 'bp-activity-filter', filter, {
-			path: '/'
+			path: '/',
+			secure: ( 'https:' === window.location.protocol )
 		} );
 	}
 	jq.cookie( 'bp-activity-oldestpage', 1, {
-		path: '/'
+		path: '/',
+		secure: ( 'https:' === window.location.protocol )
 	} );
 
 	/* Remove selected and loading classes from tabs */

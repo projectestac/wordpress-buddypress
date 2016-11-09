@@ -146,18 +146,6 @@ class BP_Core_User {
 
 	/**
 	 * Populate the instantiated class with data based on the User ID provided.
-	 *
-	 * @uses bp_core_get_userurl() Returns the URL with no HTML markup for
-	 *       a user based on their user id.
-	 * @uses bp_core_get_userlink() Returns a HTML formatted link for a
-	 *       user with the user's full name as the link text.
-	 * @uses bp_core_get_user_email() Returns the email address for the
-	 *       user based on user ID.
-	 * @uses bp_get_user_meta() BP function returns the value of passed
-	 *       usermeta name from usermeta table.
-	 * @uses bp_core_fetch_avatar() Returns HTML formatted avatar for a user
-	 * @uses bp_profile_last_updated_date() Returns the last updated date
-	 *       for a user.
 	 */
 	public function populate() {
 
@@ -823,6 +811,13 @@ class BP_Core_User {
 		$retval = array();
 		foreach ( $user_ids as $user_id ) {
 			$retval[ $user_id ] = wp_cache_get( $user_id, 'bp_last_activity' );
+
+			if ( isset( $retval['user_id'] ) ) {
+				$retval[ $user_id ]['user_id']     = (int) $retval[ $user_id ]['user_id'];
+			}
+			if ( isset( $retval['activity_id'] ) ) {
+				$retval[ $user_id ]['activity_id'] = (int) $retval[ $user_id ]['activity_id'];
+			}
 		}
 
 		return $retval;
@@ -917,6 +912,16 @@ class BP_Core_User {
 		// Set cache.
 		wp_cache_set( $user_id, $activity[ $user_id ], 'bp_last_activity' );
 
+		/**
+		 * Fires when a user's last_activity value has been updated.
+		 *
+		 * @since 2.7.0
+		 *
+		 * @param int    $user_id ID of the user.
+		 * @param string $time    Last activity timestamp, in 'Y-m-d H:i:s' format.
+		 */
+		do_action( 'bp_core_user_updated_last_activity', $user_id, $time );
+
 		return $updated;
 	}
 
@@ -934,7 +939,7 @@ class BP_Core_User {
 
 		$existing = self::get_last_activity( $user_id );
 
-		if ( empty( $existing ) ) {
+		if ( empty( $existing ) || empty( $existing[ $user_id ]['activity_id'] ) ) {
 			return false;
 		}
 

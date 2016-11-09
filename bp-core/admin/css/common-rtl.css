@@ -12,15 +12,16 @@ TABLE OF CONTENTS:
 	1.1 Version Badge
 	1.2 About Panel
 		1.2.1 Headline Feature
-		1.2.2 Columns
-		1.2.3 Features Section
-		1.2.4 Changelog Section
+		1.2.2 Features Section
+		1.2.3 Changelog Section
 2.0 Dashicons
 	2.1 Top level menus
 	2.2 Settings - Components
 	2.3 Tools
 3.0 User's Lists
 4.0 Emails - Edit page
+5.0 Tools - BuddyPress
+6.0 Plugins page
 ------------------------------------------------------------------------------*/
 
 /*------------------------------------------------------------------------------
@@ -62,140 +63,332 @@ TABLE OF CONTENTS:
 /*
  * 1.2.1 Headline Feature
  */
-.index_page_bp-about .about-wrap .headline-feature,
-.dashboard_page_bp-about .about-wrap .headline-feature {
-	margin-bottom: 2em;
-	text-align: center;
+.index_page_bp-about .bp-headline-feature,
+.dashboard_page_bp-about .bp-headline-feature {
+	margin-bottom: 3em;
+	margin-top: 3em;
+	padding: 2em 3em;
 }
 
-.index_page_bp-about .about-wrap .headline-feature h3,
-.index_page_bp-about .headline-feature .headline-title,
-.dashboard_page_bp-about .about-wrap .headline-feature h3,
-.dashboard_page_bp-about .headline-feature .headline-title {
+.index_page_bp-about .bp-headline,
+.dashboard_page_bp-about .bp-headline {
+	margin: 0 auto;
+	width: 35em;
+}
+
+.index_page_bp-about .bp-headline span.dashicons,
+.dashboard_page_bp-about .bp-headline span.dashicons {
+	background-color: #f1f1f1;
+	clear: right;
+	font-size: 100px;
+	float: right;
+	height: 100px;
+	line-height: 100px;
+	margin: 0 0 15px 15px ;
+	text-align: center;
+	width: 100px;
+}
+
+.index_page_bp-about .bp-headline-feature h3,
+.index_page_bp-about .bp-headline-feature .headline-title,
+.dashboard_page_bp-about .bp-headline-feature h3,
+.dashboard_page_bp-about .bp-headline-feature .headline-title {
 	font-size: 2.2em;
-	font-weight: normal;
-	line-height: 1.3;
-	margin: 1.25em 0 0.6em;
-	text-align: center;
+	font-weight: 300;
+	line-height: 1;
+	margin: 0 125px 0 0;
 }
 
-.index_page_bp-about .about-wrap .headline-feature p,
-.dashboard_page_bp-about .about-wrap .headline-feature p {
+.index_page_bp-about .bp-headline-feature p,
+.dashboard_page_bp-about .bp-headline-feature p {
 	font-size: 1.15em;
-	margin: 1.15em auto 0.6em;
+	margin: 1.15em 125px 0.6em auto;
 }
 
-.index_page_bp-about .about-wrap .headline-feature .introduction,
-.dashboard_page_bp-about .about-wrap .headline-feature .introduction {
+.index_page_bp-about .bp-headline-feature .introduction,
+.dashboard_page_bp-about .bp-headline-feature .introduction {
 	font-weight: 600;
 }
 
+
 /*
- * 1.2.2 Columns
+ * 1.2.2 Features Section
  */
-.index_page_bp-about .about-wrap .two-col > div,
-.dashboard_page_bp-about .about-wrap .two-col > div {
+.index_page_bp-about .bp-features-section,
+.dashboard_page_bp-about .bp-features-section {
+	clear: both;
+	margin-top: 3em;
+	overflow: hidden;
+	padding-bottom: 0;
+}
+
+.index_page_bp-about span.dashicons,
+.dashboard_page_bp-about span.dashicons {
+	background-color: #fff;
+	border-radius: 50%;
+	clear: right;
+	color: #d84800;
+	font-size: 50px;
+	float: right;
+	height: 80px;
+	line-height: 80px;
+	margin: 0 0 15px 15px ;
+	text-align: center;
+	width: 80px;
+}
+
+.index_page_bp-about .bp-features-section h3,
+.dashboard_page_bp-about .bp-features-section h3 {
+	font-size: 2em;
+	font-weight: 300;
+	line-height: 1.5;
+	margin: 0 auto 3em;
+	text-align: center;
+}
+
+.index_page_bp-about .bp-feature,
+.dashboard_page_bp-about .bp-feature {
+	float: right;
+	margin-bottom: 3em;
+	margin-left: 4.799999999%;
+	width: 47.6%;
+}
+
+
+.index_page_bp-about .bp-feature code,
+.dashboard_page_bp-about .bp-feature code{
+	font-size: 0.95em;
+	line-height: 1.5;
+}
+
+.index_page_bp-about .bp-feature:nth-of-type(2n),
+.dashboard_page_bp-about .bp-feature:nth-of-type(2n) {
+	margin-left: 0;
+}
+
+.index_page_bp-about .bp-feature::after,
+.dashboard_page_bp-about .bp-feature::after {
+	content: '';
+}
+
+.index_page_bp-about .bp-feature h4,
+.dashboard_page_bp-about .bp-feature h4 {
+	font-size: 1.25em;
+	line-height: 1.5;
+	margin-bottom: 0;
+	margin-right: 110px;
+	margin-top: 0;
+	text-align: right;
+}
+
+.index_page_bp-about .bp-feature p,
+.dashboard_page_bp-about .bp-feature p {
+	margin-right: 110px;
+}
+
+/*
+ * 1.2.3 Changelog Section
+ */
+.index_page_bp-about .bp-changelog-section,
+.dashboard_page_bp-about .bp-changelog-section {
+	clear: both;
+	margin-bottom: 8em;
+	margin-top: 3em;
+	overflow: hidden;
+	padding-bottom: 0;
+}
+
+.index_page_bp-about .bp-changelog-section::after,
+.dashboard_page_bp-about .bp-changelog-section::after {
+	content: '';
+}
+
+.index_page_bp-about .bp-changelog-section .changelog-title,
+.dashboard_page_bp-about .bp-changelog-section .changelog-title {
+	color: #23282d;
+	font-size: 1.8em;
+	font-weight: 300;
+	line-height: 1.5;
+	margin: 0 auto 0.5em;
+	text-align: center;
+}
+
+.index_page_bp-about .bp-changelog-section .two-col > div,
+.dashboard_page_bp-about .bp-changelog-section .two-col > div {
 	float: right;
 	margin-left: 4.799999999%;
 	position: relative;
 	width: 47.6%;
 }
 
-.index_page_bp-about .about-wrap .two-col .last-feature,
-.dashboard_page_bp-about .about-wrap .two-col .last-feature {
+.index_page_bp-about .bp-changelog-section .two-col > div.last-feature,
+.dashboard_page_bp-about .bp-changelog-section .two-col > div.last-feature {
 	margin-left: 0;
 }
 
-/*
- * 1.2.3 Features Section
- */
-.index_page_bp-about .bp-features-section,
-.dashboard_page_bp-about .bp-features-section {
-	margin-bottom: 2em;
-}
-
-.index_page_bp-about .about-wrap .feature-section,
-.dashboard_page_bp-about .about-wrap .feature-section {
-	clear: both;
-	margin-top: 2em;
-	overflow: hidden;
-	padding-bottom: 0;
-}
-
-.index_page_bp-about .about-wrap .changelog .feature-section,
-.dashboard_page_bp-about .about-wrap .changelog .feature-section {
-	margin-top: 0;
-}
-
-.index_page_bp-about .about-wrap .feature-section h3,
-.dashboard_page_bp-about .about-wrap .feature-section h3 {
-	font-size: 1.25em;
-	line-height: 1.5em;
-	margin: 0 0 0.6em;
-}
-
-.index_page_bp-about .about-wrap .changelog h4,
-.dashboard_page_bp-about .about-wrap .changelog h4 {
-	color: #23282d;
-	font-size: 1em;
-	margin: 1.4em 0 0.6em;
-}
-
-/*
- * 1.2.4 Changelog Section
- */
-.index_page_bp-about .about-wrap .changelog,
-.dashboard_page_bp-about .about-wrap .changelog {
-	border-top: 1px solid #eee;
+.index_page_bp-about .bp-changelog,
+.dashboard_page_bp-about .bp-changelog {
 	margin-bottom: 3em;
 }
 
-.index_page_bp-about .about-wrap .changelog .changelog-title,
-.dashboard_page_bp-about .about-wrap .changelog .changelog-title {
-	font-size: 1.25em;
-	line-height: 1.5em;
-	margin: 1.25em 0 .6em;
+.index_page_bp-about .bp-changelog h4,
+.dashboard_page_bp-about .bp-changelog h4 {
+	font-size: 1em;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+
+.index_page_bp-about .bp-changelog p,
+.dashboard_page_bp-about .bp-changelog p {
+	margin-bottom: 3em;
+}
+
+.bp-changelog-url {
 	text-align: center;
 }
 
+.bp-assets {
+	clear: both;
+	margin-bottom: 2em;
+}
+
 @media screen and ( max-width: 782px ) {
-	.index_page_bp-about .about-wrap .headline-feature,
-	.dashboard_page_bp-about .about-wrap .headline-feature {
-		max-width: 100%;
+	.index_page_bp-about .bp-headline-feature,
+	.dashboard_page_bp-about .bp-headline-feature {
+		padding: 0;
 	}
-	.index_page_bp-about .about-wrap .headline-feature h3,
-	.dahsboard_page_bp-about .about-wrap .headline-feature h3,
-	.index_page_bp-about .about-wrap .headline-feature .headline-title,
-	.dashboard_page_bp-about .about-wrap .headline-feature .headline-title {
-		font-size: 2em;
+	.index_page_bp-about .bp-headline,
+	.dashboard_page_bp-about .bp-headline {
+		margin: 0;
+		width: 97%;
 	}
 	.index_page_bp-about .bp-features-section,
 	.dashboard_page_bp-about .bp-features-section {
+		clear: both;
 		margin-bottom: 0;
+		margin-top: 2em;
 	}
-	.index_page_bp-about .about-wrap .feature-section,
-	.dashboard_page_bp-about .about-wrap .feature-section {
-		margin-top: 0;
+	.index_page_bp-about .bp-features-section h3,
+	.dashboard_page_bp-about .bp-features-section h3,
+	.index_page_bp-about .bp-changelog-section .changelog-title,
+	.dashboard_page_bp-about .bp-changelog-section .changelog-title {
+		font-size: 1.8em;
+		font-weight: 300;
+		line-height: 1.5;
+		margin-bottom: 0.5em;
+		margin-top: 0.5em;
 	}
-	.index_page_bp-about .about-wrap .two-col > div,
-	.dashboard_page_bp-about .about-wrap .two-col > div {
-		border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-		margin-top: 1.25em;
-		padding-bottom: 1em;
+	.index_page_bp-about .bp-features-section h4,
+	.dashboard_page_bp-about .bp-features-section h4,
+	.index_page_bp-about .bp-changelog-section h4,
+	.dashboard_page_bp-about .bp-changelog-section h4 {
+		font-size: 1.25em;
+		line-height: 1.25;
+		margin-top: 0.6em;
+		text-align: right;
+	}
+	.index_page_bp-about .bp-feature,
+	.dashboard_page_bp-about .bp-feature {
+		clear: both;
+		float: right;
+		margin-bottom: 1em;
+		margin-top: 1em;
+		margin-left: 0;
+		padding-left: 1em;
 		width: 100%;
 	}
-	.index_page_bp-about .changelog .two-col > div,
-	.dashboard_page_bp-about .changelog .two-col > div {
-		margin-top: 0;
-		padding-bottom: 0;
+	.index_page_bp-about .bp-feature span,
+	.dashboard_page_bp-about .bp-feature span {
+		margin-top: 0.33em;
 	}
-	.index_page_bp-about .about-wrap .changelog .changelog-title,
-	.dashboard_page_bp-about .about-wrap .changelog .changelog-title {
+	.index_page_bp-about .bp-feature h4,
+	.dashboard_page_bp-about .bp-feature h4,
+	.index_page_bp-about .bp-feature p,
+	.dashboard_page_bp-about .bp-feature p {
+		width: 100%;
+	}
+	.index_page_bp-about .bp-feature.opposite h4,
+	.dashboard_page_bp-about .bp-feature.opposite h4,
+	.index_page_bp-about .bp-feature.opposite p,
+	.dashboard_page_bp-about .bp-feature.opposite p {
+		float: none;
+	}
+	.index_page_bp-about .bp-changelog-section,
+	.dashboard_page_bp-about .bp-changelog-section {
+	clear: both;
+	margin-bottom: 2em;
+	}
+	.index_page_bp-about .bp-changelog-section .changelog-title,
+	.dashboard_page_bp-about .bp-changelog-section .changelog-title {
+		margin-bottom: 1em;
+	}
+	.index_page_bp-about .bp-changelog h4,
+	.dashboard_page_bp-about .bp-changelog h4 {
+		font-size: 1em;
+	}
+	.index_page_bp-about .bp-changelog p,
+	.dashboard_page_bp-about .bp-changelog p {
+		margin-bottom: 2em;
+	}
+	.index_page_bp-about .bp-changelog-section .two-col > div,
+	.dashboard_page_bp-about .bp-changelog-section .two-col > div {
+		margin-top: 0;
+		padding-bottom: 0.5em;
+		width: 100%;
+	}
+}
+@media screen and ( max-width: 360px ) {
+	.index_page_bp-about .bp-headline,
+	.dashboard_page_bp-about .bp-headline {
+		text-align: center;
+	}
+	.index_page_bp-about .bp-headline span.dashicons,
+	.dashboard_page_bp-about .bp-headline span.dashicons {
+		clear: none;
+		font-size: 80px;
+		float: none;
+		height: 80px;
+		line-height: 80px;
+		margin: 0 auto;
+		width: 80px;
+	}
+	.index_page_bp-about .bp-headline-feature h3,
+	.index_page_bp-about .bp-headline-feature .headline-title,
+	.dashboard_page_bp-about .bp-headline-feature h3,
+	.dashboard_page_bp-about .bp-headline-feature .headline-title {
+		margin: 1em 0 0 0;
+		text-align: right;
+	}
+	.index_page_bp-about .bp-headline-feature p,
+	.dashboard_page_bp-about .bp-headline-feature p {
+		margin: 1.15em 0 0.6em auto;
+		text-align: right;
+	}
+	.index_page_bp-about .bp-headline-feature .headline-title,
+	.dashboard_page_bp-about .bp-headline-feature .headline-title {
+		font-size: 1.5em;
+		line-height: 1.5;
+	}
+	.index_page_bp-about .bp-headline-feature p,
+	.dashboard_page_bp-about .bp-headline-feature p {
+		width: auto;
+	}
+	.index_page_bp-about .bp-feature,
+	.dashboard_page_bp-about .bp-feature {
+		text-align: center;
+	}
+	.index_page_bp-about span.dashicons,
+	.dashboard_page_bp-about span.dashicons {
+		float: none;
+	}
+	.index_page_bp-about .bp-features-section h4,
+	.dashboard_page_bp-about .bp-features-section h4,
+	.index_page_bp-about .bp-features-section p,
+	.dashboard_page_bp-about .bp-features-section p {
+		margin-right: 0;
 		text-align: right;
 	}
 }
-
-
 /*------------------------------------------------------------------------------
  * 2.0 Dashicons
  *----------------------------------------------------------------------------*/
@@ -366,4 +559,76 @@ body.users_page_bp-signups td.count_sent {
  *----------------------------------------------------------------------------*/
 body.post-type-bp-email #excerpt {
 	height: auto;
+}
+
+body.post-type-bp-email th#situation {
+	width: 20%;
+}
+
+body.post-type-bp-email td.column-situation ul {
+	margin: 0;
+}
+
+body.post-type-bp-email .categorydiv label {
+	display: block;
+	float: right;
+	padding-right: 25px;
+	text-indent: -25px;
+}
+
+/*------------------------------------------------------------------------------
+ * 5.0 Tools - BuddyPress
+ *----------------------------------------------------------------------------*/
+.tools_page_bp-tools .wrap {
+	max-width: 950px;
+}
+
+.tools_page_bp-tools p {
+	line-height: 2;
+}
+
+.tools_page_bp-tools fieldset {
+	margin: 2em 0 0;
+}
+
+.tools_page_bp-tools legend {
+	color: #23282d;
+	font-size: 1.3em;
+	font-weight: 600px;
+	margin: 1em 0;
+}
+
+.tools_page_bp-tools label {
+	clear: right;
+	display: block;
+	line-height: 1.5em;
+	margin: 0 0 1em;
+	vertical-align: middle;
+}
+
+@media screen and (max-width: 782px) {
+	.tools_page_bp-tools p {
+		line-height: 1.5;
+	}
+	.tools_page_bp-tools label {
+		margin-bottom: 1em;
+		padding-left: 25px;
+		text-indent: -33px;
+	}
+	.tools_page_bp-tools .checkbox {
+		padding: 0 30px 0 0;
+	}
+}
+
+
+/*------------------------------------------------------------------------------
+ * 6.0 Plugins page
+ *----------------------------------------------------------------------------*/
+#buddypress-update.not-shiny .update-message {
+	border-right: 0;
+	padding-right: 36px;
+}
+
+#buddypress-update.not-shiny .update-message:before {
+	content: "\f534";
 }

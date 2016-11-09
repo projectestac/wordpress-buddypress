@@ -606,6 +606,134 @@ function bp_blogs_comments_open( $activity ) {
 	return $open;
 }
 
+/** SITE TRACKING *******************************************************/
+
+/**
+ * Add an activity entry for a newly-created site.
+ *
+ * Hooked to the 'bp_blogs_new_blog' action.
+ *
+ * @since 2.6.0
+ *
+ * @param BP_Blogs_Blog $recorded_blog Current site being recorded. Passed by reference.
+ * @param bool          $is_private    Whether the current site being recorded is private.
+ * @param bool          $is_recorded   Whether the current site was recorded.
+ */
+function bp_blogs_record_activity_on_site_creation( $recorded_blog, $is_private, $is_recorded, $no_activity ) {
+	// Only record this activity if the blog is public.
+	if ( ! $is_private && ! $no_activity && bp_blogs_is_blog_trackable( $recorded_blog->blog_id, $recorded_blog->user_id ) ) {
+		bp_blogs_record_activity( array(
+			'user_id'      => $recorded_blog->user_id,
+			'primary_link' => apply_filters( 'bp_blogs_activity_created_blog_primary_link', bp_blogs_get_blogmeta( $recorded_blog->blog_id, 'url' ), $recorded_blog->blog_id ),
+			'type'         => 'new_blog',
+			'item_id'      => $recorded_blog->blog_id
+		) );
+	}
+}
+add_action( 'bp_blogs_new_blog', 'bp_blogs_record_activity_on_site_creation', 10, 4 );
+
+/**
+ * Deletes the 'new_blog' activity entry when a site is deleted.
+ *
+ * @since 2.6.0
+ *
+ * @param int $blog_id Site ID.
+ */
+function bp_blogs_delete_new_blog_activity_for_site( $blog_id, $user_id = 0 ) {
+	$args = array(
+		'item_id'   => $blog_id,
+		'component' => buddypress()->blogs->id,
+		'type'      => 'new_blog'
+	);
+
+	/**
+	 * In the case a user is removed, make sure he is the author of the 'new_blog' activity
+	 * when trying to delete it.
+	 */
+	if ( ! empty( $user_id ) ) {
+		$args['user_id'] = $user_id;
+	}
+
+	bp_blogs_delete_activity( $args );
+}
+add_action( 'bp_blogs_remove_blog',          'bp_blogs_delete_new_blog_activity_for_site', 10, 1 );
+add_action( 'bp_blogs_remove_blog_for_user', 'bp_blogs_delete_new_blog_activity_for_site', 10, 2 );
+
+/**
+ * Delete all 'blogs' activity items for a site when the site is deleted.
+ *
+ * @since 2.6.0
+ *
+ * @param int $blog_id Site ID.
+ */
+function bp_blogs_delete_activity_for_site( $blog_id ) {
+	bp_blogs_delete_activity( array(
+		'item_id'   => $blog_id,
+		'component' => buddypress()->blogs->id,
+		'type'      => false
+	) );
+}
+add_action( 'bp_blogs_remove_data_for_blog', 'bp_blogs_delete_activity_for_site' );
+
+/**
+ * Remove a blog post activity item from the activity stream.
+ *
+ * @since 1.0.0
+ *
+ * @param int $post_id ID of the post to be removed.
+ * @param int $blog_id Optional. Defaults to current blog ID.
+ * @param int $user_id Optional. Defaults to the logged-in user ID. This param
+ *                     is currently unused in the function (but is passed to hooks).
+ * @return bool
+ */
+function bp_blogs_remove_post( $post_id, $blog_id = 0, $user_id = 0 ) {
+	global $wpdb;
+
+	if ( empty( $wpdb->blogid ) ) {
+		return false;
+	}
+
+	$post_id = (int) $post_id;
+
+	if ( ! $blog_id ) {
+		$blog_id = (int) $wpdb->blogid;
+	}
+
+	if ( ! $user_id ) {
+		$user_id = bp_loggedin_user_id();
+	}
+
+	/**
+	 * Fires before removal of a blog post activity item from the activity stream.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param int $blog_id ID of the blog associated with the post that was removed.
+	 * @param int $post_id ID of the post that was removed.
+	 * @param int $user_id ID of the user having the blog removed for.
+	 */
+	do_action( 'bp_blogs_before_remove_post', $blog_id, $post_id, $user_id );
+
+	bp_blogs_delete_activity( array(
+		'item_id'           => $blog_id,
+		'secondary_item_id' => $post_id,
+		'component'         => buddypress()->blogs->id,
+		'type'              => 'new_blog_post'
+	) );
+
+	/**
+	 * Fires after removal of a blog post activity item from the activity stream.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $blog_id ID of the blog associated with the post that was removed.
+	 * @param int $post_id ID of the post that was removed.
+	 * @param int $user_id ID of the user having the blog removed for.
+	 */
+	do_action( 'bp_blogs_remove_post', $blog_id, $post_id, $user_id );
+}
+add_action( 'delete_post', 'bp_blogs_remove_post' );
+
 /** POST COMMENT SYNCHRONIZATION ****************************************/
 
 /**
@@ -630,6 +758,12 @@ function bp_blogs_sync_add_from_activity_comment( $comment_id, $params, $parent_
 
 	// If activity comments are disabled for blog posts, stop now!
 	if ( bp_disable_blogforum_comments() ) {
+		return;
+	}
+
+	// Do not sync if the activity comment was marked as spam.
+	$activity = new BP_Activity_Activity( $comment_id );
+	if ( $activity->is_spam ) {
 		return;
 	}
 
@@ -830,7 +964,7 @@ function bp_blogs_sync_activity_edit_to_post_comment( BP_Activity_Activity $acti
 	remove_action( 'transition_comment_status',     'bp_activity_transition_post_type_comment_status', 10, 3 );
 	remove_action( 'bp_activity_post_type_comment', 'bp_blogs_comment_sync_activity_comment',          10, 4 );
 
-	if ( 1 === (int) $activity->is_spam && 'spam' !== $post_comment_status ) {
+	if ( 1 === $activity->is_spam && 'spam' !== $post_comment_status ) {
 		wp_spam_comment( $post_comment_id );
 	} elseif ( ! $activity->is_spam ) {
 		if ( 'spam' === $post_comment_status  ) {
@@ -1157,7 +1291,7 @@ function bp_blogs_can_comment_reply( $retval, $comment ) {
 
 	// Check comment depth and disable if depth is too large.
 	if ( isset( buddypress()->blogs->thread_depth[$comment->item_id] ) ){
-		if ( $comment->mptt_left > buddypress()->blogs->thread_depth[$comment->item_id] ) {
+		if ( bp_activity_get_comment_depth() > buddypress()->blogs->thread_depth[$comment->item_id] ) {
 			$retval = false;
 		}
 	}

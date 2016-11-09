@@ -24,15 +24,25 @@ class BP_Groups_Widget extends WP_Widget {
 	 */
 	public function __construct() {
 		$widget_ops = array(
-			'description' => __( 'A dynamic list of recently active, popular, and newest groups', 'buddypress' ),
-			'classname' => 'widget_bp_groups_widget buddypress widget',
+			'description'                 => __( 'A dynamic list of recently active, popular, and newest groups', 'buddypress' ),
+			'classname'                   => 'widget_bp_groups_widget buddypress widget',
+			'customize_selective_refresh' => true,
 		);
 		parent::__construct( false, _x( '(BuddyPress) Groups', 'widget name', 'buddypress' ), $widget_ops );
 
-		if ( is_active_widget( false, false, $this->id_base ) && ! is_admin() && ! is_network_admin() ) {
-			$min = bp_core_get_minified_asset_suffix();
-			wp_enqueue_script( 'groups_widget_groups_list-js', buddypress()->plugin_url . "bp-groups/js/widget-groups{$min}.js", array( 'jquery' ), bp_get_version() );
+		if ( is_customize_preview() || is_active_widget( false, false, $this->id_base ) ) {
+			add_action( 'bp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 		}
+	}
+
+	/**
+	 * Enqueue scripts.
+	 *
+	 * @since 2.6.0
+	 */
+	public function enqueue_scripts() {
+		$min = bp_core_get_minified_asset_suffix();
+		wp_enqueue_script( 'groups_widget_groups_list-js', buddypress()->plugin_url . "bp-groups/js/widget-groups{$min}.js", array( 'jquery' ), bp_get_version() );
 	}
 
 	/**
@@ -115,7 +125,7 @@ class BP_Groups_Widget extends WP_Widget {
 				<a href="<?php bp_groups_directory_permalink(); ?>" id="popular-groups" <?php if ( $instance['group_default'] == 'popular' ) : ?> class="selected"<?php endif; ?>><?php _e("Popular", 'buddypress') ?></a>
 			</div>
 
-			<ul id="groups-list" class="item-list">
+			<ul id="groups-list" class="item-list" aria-live="polite" aria-relevant="all" aria-atomic="true">
 				<?php while ( bp_groups() ) : bp_the_group(); ?>
 					<li <?php bp_group_class(); ?>>
 						<div class="item-avatar">

@@ -25,8 +25,6 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 * @since 2.3.0
 	 *
 	 * @see  BP_Attachment::__construct() for list of parameters
-	 * @uses bp_core_avatar_original_max_filesize()
-	 * @uses BP_Attachment::__construct()
 	 */
 	public function __construct() {
 		// Allowed avatar types.
@@ -63,11 +61,6 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 * Set Upload Dir data for avatars.
 	 *
 	 * @since 2.3.0
-	 *
-	 * @uses bp_core_avatar_upload_path()
-	 * @uses bp_core_avatar_url()
-	 * @uses bp_upload_dir()
-	 * @uses BP_Attachment::set_upload_dir()
 	 */
 	public function set_upload_dir() {
 		if ( bp_core_avatar_upload_path() && bp_core_avatar_url() ) {
@@ -87,10 +80,7 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses   bp_core_check_avatar_size()
-	 * @uses   bp_core_check_avatar_type()
-	 *
-	 * @param  array $file the temporary file attributes (before it has been moved).
+	 * @param array $file the temporary file attributes (before it has been moved).
 	 * @return array the file with extra errors if needed.
 	 */
 	public function validate_upload( $file = array() ) {
@@ -117,8 +107,6 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 * @since 2.4.0 Add the $ui_available_width parameter, to inform about the Avatar UI width.
-	 *
-	 * @uses  bp_core_avatar_original_max_width()
 	 *
 	 * @param string $file               The absolute path to the file.
 	 * @param int    $ui_available_width Available width for the UI.
@@ -184,8 +172,6 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses  bp_core_avatar_full_width()
-	 * @uses  bp_core_avatar_full_height()
 	 *
 	 * @param string $file the absolute path to the file.
 	 * @return bool
@@ -208,12 +194,6 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 * @since 2.3.0
 	 *
 	 * @see  BP_Attachment::crop for the list of parameters
-	 * @uses bp_core_fetch_avatar()
-	 * @uses bp_core_delete_existing_avatar()
-	 * @uses bp_core_avatar_full_width()
-	 * @uses bp_core_avatar_full_height()
-	 * @uses bp_core_avatar_dimension()
-	 * @uses BP_Attachment::crop
 	 *
 	 * @param array $args Array of arguments for the cropping.
 	 * @return array The cropped avatars (full and thumb).

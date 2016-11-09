@@ -50,11 +50,6 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 * @since 2.4.0 Add the $upload_dir_filter_args argument to the $arguments array
-	 * @uses                                    sanitize_key()
-	 * @uses                                    wp_max_upload_size()
-	 * @uses                                    bp_parse_args()
-	 * @uses                                    BP_Attachment->set_upload_error_strings()
-	 * @uses                                    BP_Attachment->set_upload_dir()
 	 *
 	 * @param array|string $args {
 	 *     @type int    $original_max_filesize  Maximum file size in kilobytes. Defaults to php.ini settings.
@@ -115,7 +110,6 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses bp_upload_dir()
 	 */
 	public function set_upload_dir() {
 		// Set the directory, path, & url variables.
@@ -203,21 +197,17 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses   wp_handle_upload()        To upload the file
-	 * @uses   add_filter()              To temporarly overrides WordPress uploads data
-	 * @uses   remove_filter()           To stop overriding WordPress uploads data
-	 * @uses   apply_filters()           Call 'bp_attachment_upload_overrides' to include specific upload overrides
-	 *
-	 * @param  array       $file              The appropriate entry the from $_FILES superglobal.
-	 * @param  string      $upload_dir_filter A specific filter to be applied to 'upload_dir' (optional).
-	 * @param  string|null $time              Optional. Time formatted in 'yyyy/mm'. Default null.
+	 * @param array       $file              The appropriate entry the from $_FILES superglobal.
+	 * @param string      $upload_dir_filter A specific filter to be applied to 'upload_dir' (optional).
+	 * @param string|null $time              Optional. Time formatted in 'yyyy/mm'. Default null.
 	 * @return array On success, returns an associative array of file attributes.
 	 *               On failure, returns an array containing the error message
 	 *               (eg: array( 'error' => $message ) )
 	 */
 	public function upload( $file, $upload_dir_filter = '', $time = null ) {
 		/**
-		 * Upload action and the file input name are required parameters
+		 * Upload action and the file input name are required parameters.
+		 *
 		 * @see BP_Attachment:__construct()
 		 */
 		if ( empty( $this->action ) || empty( $this->file_input ) ) {
@@ -303,7 +293,6 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses get_allowed_mime_types()
 	 */
 	protected function validate_mime_types() {
 		$wp_mimes = get_allowed_mime_types();
@@ -331,7 +320,7 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @param  array $file The temporary file attributes (before it has been moved).
+	 * @param array $file The temporary file attributes (before it has been moved).
 	 * @return array The file.
 	 */
 	public function validate_upload( $file = array() ) {
@@ -354,10 +343,9 @@ abstract class BP_Attachment {
 	 * @since 2.3.0
 	 * @since 2.4.0 Add the $upload_dir parameter to the method
 	 *
-	 * @uses apply_filters() call 'bp_attachment_upload_dir' to eventually override the upload location
 	 *       regarding to context
 	 *
-	 * @param  array $upload_dir The original Uploads dir.
+	 * @param array $upload_dir The original Uploads dir.
 	 * @return array The upload directory data.
 	 */
 	public function upload_dir_filter( $upload_dir = array() ) {
@@ -389,7 +377,6 @@ abstract class BP_Attachment {
 	 *
 	 * @since 2.3.0
 	 *
-	 * @uses wp_mkdir_p()
 	 */
 	public function create_dir() {
 		// Bail if no specific base dir is set.
@@ -426,7 +413,6 @@ abstract class BP_Attachment {
 	 *     @type int    $src_abs       Optional. If the source crop points are absolute.
 	 *     @type string $dst_file      Optional. The destination file to write to.
 	 * }
-	 * @uses wp_crop_image()
 	 *
 	 * @return string|WP_Error New filepath on success, WP_Error on failure.
 	 */
@@ -536,9 +522,9 @@ abstract class BP_Attachment {
 	/**
 	 * Get full data for an image
 	 *
-	 * @since  2.4.0
+	 * @since 2.4.0
 	 *
-	 * @param  string $file Absolute path to the uploaded image.
+	 * @param string $file Absolute path to the uploaded image.
 	 * @return bool|array   An associate array containing the width, height and metadatas.
 	 *                      False in case an important image attribute is missing.
 	 */
@@ -588,9 +574,9 @@ abstract class BP_Attachment {
 		/**
 		 * Filter here to add/remove/edit data to the image full data
 		 *
-		 * @since  2.4.0
+		 * @since 2.4.0
 		 *
-		 * @param  array $image_data An associate array containing the width, height and metadatas.
+		 * @param array $image_data An associate array containing the width, height and metadatas.
 		 */
 		return apply_filters( 'bp_attachments_get_image_data', $image_data );
 	}
@@ -598,7 +584,7 @@ abstract class BP_Attachment {
 	/**
 	 * Edit an image file to resize it or rotate it
 	 *
-	 * @since  2.4.0
+	 * @since 2.4.0
 	 *
 	 * @param string $attachment_type The attachment type (eg: avatar or cover_image). Required.
 	 * @param array  $args {
