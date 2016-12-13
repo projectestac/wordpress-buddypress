@@ -809,3 +809,19 @@ if ( defined( 'BUDDYPRESS_LATE_LOAD' ) ) {
 }
 
 endif;
+
+// XTEC ************ AFEGIT - Can not change bbpress role to xtecadmin
+// 2016.12.13 @xaviernietosanchez
+function xtec_filter_bbp_set_user_role( $new_role, $user_id, $user ) {
+    if( $user->data->user_login == 'xtecadmin' ){
+    	foreach ( $user->roles as $role ) {
+    		if( substr( $role, 0, 4 ) == 'bbp_' ){
+    			$user->remove_role( $new_role );
+    			$user->add_role( 'bbp_keymaster' );
+    		}
+    	}
+    }
+    return $new_role;
+}
+add_filter( 'bbp_set_user_role', 'xtec_filter_bbp_set_user_role', 10, 3 );
+// ************ FI
