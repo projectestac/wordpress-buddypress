@@ -3132,7 +3132,14 @@ function bp_send_email( $email_type, $to, $args = array() ) {
 		return wp_mail(
 			array_shift( $to )->get_address(),
 			$email->get( 'subject', 'replace-tokens' ),
+			// XTECT ************ MODIFICAT - Change format content to send
+			// 2017.04.24 @xaviernietosanchez
+			$email->get( 'content_html', 'replace-tokens' )
+			// ************ ORIGINAL
+			/*
 			$email->get( 'content_plaintext', 'replace-tokens' )
+			*/
+			// ************ FI
 		);
 	}
 
