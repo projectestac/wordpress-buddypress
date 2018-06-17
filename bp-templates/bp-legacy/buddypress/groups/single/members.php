@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -131,4 +132,4 @@
 		<p><?php _e( 'No members were found.', 'buddypress' ); ?></p>
 	</div>
 
-<?php endif; ?>
+<?php endif;

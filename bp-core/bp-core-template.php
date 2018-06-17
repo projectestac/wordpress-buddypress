@@ -550,10 +550,6 @@ function bp_search_form_type_select() {
 		$options['blogs']   = _x( 'Blogs', 'search form', 'buddypress' );
 	}
 
-	if ( bp_is_active( 'forums' ) && bp_forums_is_installed_correctly() && bp_forums_has_directory() ) {
-		$options['forums']  = _x( 'Forums', 'search form', 'buddypress' );
-	}
-
 	$options['posts'] = _x( 'Posts', 'search form', 'buddypress' );
 
 	// Eventually this won't be needed and a page will be built to integrate all search results.
@@ -796,7 +792,14 @@ function bp_form_field_attributes( $name = '', $attributes = array() ) {
 		$attributes = (array) apply_filters( 'bp_get_form_field_attributes', $attributes, $name );
 
 		foreach( $attributes as $attr => $value ) {
-			$retval .= sprintf( ' %s="%s"', sanitize_key( $attr ), esc_attr( $value ) );
+			// Numeric keyed array.
+			if (is_numeric( $attr ) ) {
+				$retval .= sprintf( ' %s', esc_attr( $value ) );
+
+			// Associative keyed array.
+			} else {
+				$retval .= sprintf( ' %s="%s"', sanitize_key( $attr ), esc_attr( $value ) );
+			}
 		}
 
 		return $retval;
@@ -1154,10 +1157,7 @@ function bp_blog_signup_allowed() {
  *              otherwise false.
  */
 function bp_account_was_activated() {
-	$bp                  = buddypress();
-	$activation_complete = !empty( $bp->activation_complete )
-		? $bp->activation_complete
-		: false;
+	$activation_complete = ! empty( buddypress()->activation_complete ) || ( bp_is_current_component( 'activate' ) && ! empty( $_GET['activated'] ) );
 
 	return $activation_complete;
 }
@@ -2199,6 +2199,7 @@ function bp_is_groups_component() {
  * Check whether the current page is part of the Forums component.
  *
  * @since 1.5.0
+ * @since 3.0.0 Required for bbPress 2 integration.
  *
  * @return bool True if the current page is part of the Forums component.
  */
@@ -2473,54 +2474,6 @@ function bp_is_user_change_cover_image() {
 }
 
 /**
- * Is this a user's forums page?
- *
- * Eg http://example.com/members/joe/forums/ (or a subpage thereof).
- *
- * @since 1.5.0
- *
- * @return bool True if the current page is a user's forums page.
- */
-function bp_is_user_forums() {
-
-	if ( ! bp_is_active( 'forums' ) ) {
-		return false;
-	}
-
-	if ( bp_is_user() && bp_is_forums_component() ) {
-		return true;
-	}
-
-	return false;
-}
-
-/**
- * Is this a user's "Topics Started" page?
- *
- * Eg http://example.com/members/joe/forums/topics/.
- *
- * @since 1.5.0
- *
- * @return bool True if the current page is a user's Topics Started page.
- */
-function bp_is_user_forums_started() {
-	return (bool) ( bp_is_user_forums() && bp_is_current_action( 'topics' ) );
-}
-
-/**
- * Is this a user's "Replied To" page?
- *
- * Eg http://example.com/members/joe/forums/replies/.
- *
- * @since 1.5.0
- *
- * @return bool True if the current page is a user's Replied To forums page.
- */
-function bp_is_user_forums_replied_to() {
-	return (bool) ( bp_is_user_forums() && bp_is_current_action( 'replies' ) );
-}
-
-/**
  * Is the current page part of a user's Groups page?
  *
  * Eg http://example.com/members/joe/groups/ (or a subpage thereof).
@@ -2683,7 +2636,7 @@ function bp_is_user_settings_profile() {
  *
  * @since 2.0.0
  *
- * @return True if the current page is the groups directory.
+ * @return bool True if the current page is the groups directory.
  */
 function bp_is_groups_directory() {
 	if ( bp_is_groups_component() && ! bp_is_group() && ( ! bp_current_action() || ( bp_action_variable() && bp_is_current_action( bp_get_groups_group_type_base() ) ) ) ) {
@@ -2755,37 +2708,11 @@ function bp_is_group_admin_page() {
 }
 
 /**
- * Is the current page a group's forum page?
- *
- * Only applies to legacy bbPress forums.
- *
- * @since 1.1.0
- *
- * @return bool True if the current page is a group forum page.
- */
-function bp_is_group_forum() {
-	$retval = false;
-
-	// At a forum URL.
-	if ( bp_is_single_item() && bp_is_groups_component() && bp_is_current_action( 'forum' ) ) {
-		$retval = true;
-
-		// If at a forum URL, set back to false if forums are inactive, or not
-		// installed correctly.
-		if ( ! bp_is_active( 'forums' ) || ! bp_forums_is_installed_correctly() ) {
-			$retval = false;
-		}
-	}
-
-	return $retval;
-}
-
-/**
  * Is the current page a group's activity page?
  *
  * @since 1.2.1
  *
- * @return True if the current page is a group's activity page.
+ * @return bool True if the current page is a group's activity page.
  */
 function bp_is_group_activity() {
 	$retval = false;
@@ -2804,9 +2731,8 @@ function bp_is_group_activity() {
 /**
  * Is the current page a group forum topic?
  *
- * Only applies to legacy bbPress (1.x) forums.
- *
  * @since 1.1.0
+ * @since 3.0.0 Required for bbPress 2 integration.
  *
  * @return bool True if the current page is part of a group forum topic.
  */
@@ -2817,9 +2743,8 @@ function bp_is_group_forum_topic() {
 /**
  * Is the current page a group forum topic edit page?
  *
- * Only applies to legacy bbPress (1.x) forums.
- *
  * @since 1.2.0
+ * @since 3.0.0 Required for bbPress 2 integration.
  *
  * @return bool True if the current page is part of a group forum topic edit page.
  */
@@ -2930,7 +2855,7 @@ function bp_is_create_blog() {
  *
  * @since 2.0.0
  *
- * @return True if the current page is the blogs directory.
+ * @return bool True if the current page is the blogs directory.
  */
 function bp_is_blogs_directory() {
 	if ( is_multisite() && bp_is_blogs_component() && ! bp_current_action() ) {
@@ -3298,6 +3223,13 @@ function bp_the_body_class() {
 
 		if ( bp_is_user() ) {
 			$bp_classes[] = 'bp-user';
+
+			// Add current user member types.
+			if ( $member_types = bp_get_member_type( bp_displayed_user_id(), false ) ) {
+				foreach( $member_types as $member_type ) {
+					$bp_classes[] = sprintf( 'member-type-%s', esc_attr( $member_type ) );
+				}
+			}
 		}
 
 		if ( ! bp_is_directory() ) {
@@ -3388,6 +3320,13 @@ function bp_the_body_class() {
 
 		if ( bp_is_group() ) {
 			$bp_classes[] = 'group-' . groups_get_current_group()->slug;
+
+			// Add current group types.
+			if ( $group_types = bp_groups_get_group_type( bp_get_current_group_id(), false ) ) {
+				foreach ( $group_types as $group_type ) {
+					$bp_classes[] = sprintf( 'group-type-%s', esc_attr( $group_type ) );
+				}
+			}
 		}
 
 		if ( bp_is_group_leave() ) {
@@ -3400,18 +3339,6 @@ function bp_the_body_class() {
 
 		if ( bp_is_group_members() ) {
 			$bp_classes[] = 'group-members';
-		}
-
-		if ( bp_is_group_forum_topic() ) {
-			$bp_classes[] = 'group-forum-topic';
-		}
-
-		if ( bp_is_group_forum_topic_edit() ) {
-			$bp_classes[] = 'group-forum-topic-edit';
-		}
-
-		if ( bp_is_group_forum() ) {
-			$bp_classes[] = 'group-forum';
 		}
 
 		if ( bp_is_group_admin_page() ) {
@@ -3455,6 +3382,9 @@ function bp_the_body_class() {
 		if ( ! bp_is_blog_page() ) {
 			$bp_classes[] = 'buddypress';
 		}
+
+		// Add the theme name/id to the body classes
+		$bp_classes[] = 'bp-' . bp_get_theme_compat_id();
 
 		// Merge WP classes with BuddyPress classes and remove any duplicates.
 		$classes = array_unique( array_merge( (array) $bp_classes, (array) $wp_classes ) );
@@ -3508,9 +3438,6 @@ function bp_get_the_post_class( $wp_classes = array() ) {
 
 	} elseif ( bp_is_activation_page() ) {
 		$bp_classes[] = 'bp_activate';
-
-	} elseif ( bp_is_forums_component() && bp_is_directory() ) {
-		$bp_classes[] = 'bp_forum';
 	}
 
 	if ( empty( $bp_classes ) ) {
@@ -3594,7 +3521,7 @@ function bp_get_nav_menu_items( $component = 'members' ) {
 				$submenu->parent = $nav_menu->slug;
 
 				// If we're viewing this item's screen, record that we need to mark its parent menu to be selected.
-				if ( $sub_menu->slug == bp_current_action() ) {
+				if ( bp_is_current_action( $sub_menu->slug ) && bp_is_current_component( $nav_menu->slug ) ) {
 					$menu->class[]    = 'current-menu-parent';
 					$submenu->class[] = 'current-menu-item';
 				}

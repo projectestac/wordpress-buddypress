@@ -23,6 +23,7 @@ class BP_XProfile_User_Admin {
 	 *
 	 * @since 2.0.0
 	 *
+	 * @return BP_XProfile_User_Admin
 	 */
 	public static function register_xprofile_user_admin() {
 
@@ -87,7 +88,7 @@ class BP_XProfile_User_Admin {
 		 * We cannot simply use add_thickbox() here as WordPress is not playing
 		 * nice with Thickbox width/height see https://core.trac.wordpress.org/ticket/17249
 		 * Using media-upload might be interesting in the future for the send to editor stuff
-		 * and we make sure the tb_window is wide enougth
+		 * and we make sure the tb_window is wide enough
 		 */
 		wp_enqueue_style ( 'thickbox' );
 		wp_enqueue_script( 'media-upload' );
@@ -138,7 +139,7 @@ class BP_XProfile_User_Admin {
 					$screen_id,
 					'normal',
 					'core',
-					array( 'profile_group_id' => absint( bp_get_the_profile_group_id() ) )
+					array( 'profile_group_id' => bp_get_the_profile_group_id() )
 				);
 			endwhile;
 
@@ -227,16 +228,7 @@ class BP_XProfile_User_Admin {
 
 			// Loop through the posted fields formatting any datebox values then validate the field.
 			foreach ( (array) $posted_field_ids as $field_id ) {
-				if ( ! isset( $_POST['field_' . $field_id ] ) ) {
-					if ( ! empty( $_POST['field_' . $field_id . '_day'] ) && ! empty( $_POST['field_' . $field_id . '_month'] ) && ! empty( $_POST['field_' . $field_id . '_year'] ) ) {
-
-						// Concatenate the values.
-						$date_value =   $_POST['field_' . $field_id . '_day'] . ' ' . $_POST['field_' . $field_id . '_month'] . ' ' . $_POST['field_' . $field_id . '_year'];
-
-						// Turn the concatenated value into a timestamp.
-						$_POST['field_' . $field_id] = date( 'Y-m-d H:i:s', strtotime( $date_value ) );
-					}
-				}
+				bp_xprofile_maybe_format_datebox_post_data( $field_id );
 
 				$is_required[ $field_id ] = xprofile_check_is_required_field( $field_id ) && ! bp_current_user_can( 'bp_moderate' );
 				if ( $is_required[ $field_id ] && empty( $_POST['field_' . $field_id ] ) ) {
@@ -365,17 +357,12 @@ class BP_XProfile_User_Admin {
 			<?php while ( bp_profile_fields() ) : bp_the_profile_field(); ?>
 
 				<div<?php bp_field_css_class( 'bp-profile-field' ); ?>>
+					<fieldset>
 
 					<?php
 
 					$field_type = bp_xprofile_create_field_type( bp_get_the_profile_field_type() );
 					$field_type->edit_field_html( array( 'user_id' => $r['user_id'] ) );
-
-					if ( bp_get_the_profile_field_description() ) : ?>
-
-						<p class="description"><?php bp_the_profile_field_description(); ?></p>
-
-					<?php endif;
 
 					/**
 					 * Fires before display of visibility form elements for profile metaboxes.
@@ -386,7 +373,7 @@ class BP_XProfile_User_Admin {
 
 					$can_change_visibility = bp_current_user_can( 'bp_xprofile_change_field_visibility' ); ?>
 
-					<p class="field-visibility-settings-<?php echo $can_change_visibility ? 'toggle' : 'notoggle'; ?>" id="field-visibility-settings-toggle-<?php bp_the_profile_field_id(); ?>">
+					<p class="field-visibility-settings-<?php echo $can_change_visibility ? 'toggle' : 'notoggle'; ?>" id="field-visibility-settings-toggle-<?php bp_the_profile_field_id(); ?>"><span id="<?php bp_the_profile_field_input_name(); ?>-2">
 
 						<?php
 						printf(
@@ -394,10 +381,11 @@ class BP_XProfile_User_Admin {
 							'<span class="current-visibility-level">' . bp_get_the_profile_field_visibility_level_label() . '</span>'
 						);
 						?>
+						</span>
 
 						<?php if ( $can_change_visibility ) : ?>
 
-							<a href="#" class="button visibility-toggle-link"><?php esc_html_e( 'Change', 'buddypress' ); ?></a>
+							<button type="button" class="button visibility-toggle-link" aria-describedby="<?php bp_the_profile_field_input_name(); ?>-2" aria-expanded="false"><?php esc_html_e( 'Change', 'buddypress' ); ?></button>
 
 						<?php endif; ?>
 					</p>
@@ -411,7 +399,7 @@ class BP_XProfile_User_Admin {
 								<?php bp_profile_visibility_radio_buttons(); ?>
 
 							</fieldset>
-							<a class="button field-visibility-settings-close" href="#"><?php esc_html_e( 'Close', 'buddypress' ); ?></a>
+							<button type="button" class="button field-visibility-settings-close"><?php esc_html_e( 'Close', 'buddypress' ); ?></button>
 						</div>
 
 					<?php endif; ?>
@@ -425,6 +413,7 @@ class BP_XProfile_User_Admin {
 					 */
 					do_action( 'bp_custom_profile_edit_fields' ); ?>
 
+					</fieldset>
 				</div>
 
 			<?php endwhile; // End bp_profile_fields(). ?>
@@ -475,7 +464,10 @@ class BP_XProfile_User_Admin {
 				);
 
 				if ( ! empty( $_REQUEST['wp_http_referer'] ) ) {
-					$query_args['wp_http_referer'] = urlencode( wp_unslash( $_REQUEST['wp_http_referer'] ) );
+					$wp_http_referer = wp_unslash( $_REQUEST['wp_http_referer'] );
+					$wp_http_referer = remove_query_arg( array( 'action', 'updated' ), $wp_http_referer );
+					$wp_http_referer = wp_validate_redirect( esc_url_raw( $wp_http_referer ) );
+					$query_args['wp_http_referer'] = urlencode( $wp_http_referer );
 				}
 
 				$community_url = add_query_arg( $query_args, buddypress()->members->admin->edit_profile_url );

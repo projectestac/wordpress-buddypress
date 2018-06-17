@@ -120,10 +120,40 @@ function bp_core_get_table_prefix() {
  * @return array $items The sorted array.
  */
 function bp_sort_by_key( $items, $key, $type = 'alpha', $preserve_keys = false ) {
+	$callback = function( $a, $b ) use ( $key, $type ) {
+		$values = array( 0 => false, 1 => false );
+		foreach ( func_get_args() as $indexi => $index ) {
+			if ( isset( $index->{$key} ) ) {
+				$values[ $indexi ] = $index->{$key};
+			} elseif ( isset( $index[ $key ] ) ) {
+				$values[ $indexi ] = $index[ $key ];
+			}
+		}
+
+		if ( isset( $values[0], $values[1] ) ) {
+			if ( 'num' === $type ) {
+				$cmp = $values[0] - $values[1];
+			} else {
+				$cmp = strcmp( $values[0], $values[1] );
+			}
+
+			if ( 0 > $cmp ) {
+				$retval = -1;
+			} elseif ( 0 < $cmp ) {
+				$retval = 1;
+			} else {
+				$retval = 0;
+			}
+			return $retval;
+		} else {
+			return 0;
+		}
+	};
+
 	if ( true === $preserve_keys ) {
-		uasort( $items, array( new BP_Core_Sort_By_Key_Callback( $key, $type ), 'sort_callback' ) );
+		uasort( $items, $callback );
 	} else {
-		usort( $items, array( new BP_Core_Sort_By_Key_Callback( $key, $type ), 'sort_callback' ) );
+		usort( $items, $callback );
 	}
 
 	return $items;
@@ -415,6 +445,27 @@ function bp_use_wp_admin_bar() {
 	return (bool) apply_filters( 'bp_use_wp_admin_bar', $use_admin_bar );
 }
 
+
+/**
+ * Return the parent forum ID for the Legacy Forums abstraction layer.
+ *
+ * @since 1.5.0
+ * @since 3.0.0 Supported for compatibility with bbPress 2.
+ *
+ * @return int Forum ID.
+ */
+function bp_forums_parent_forum_id() {
+
+	/**
+	 * Filters the parent forum ID for the bbPress abstraction layer.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param int BP_FORUMS_PARENT_FORUM_ID The Parent forum ID constant.
+	 */
+	return apply_filters( 'bp_forums_parent_forum_id', BP_FORUMS_PARENT_FORUM_ID );
+}
+
 /** Directory *****************************************************************/
 
 /**
@@ -437,12 +488,6 @@ function bp_core_get_packaged_component_ids() {
 		'notifications',
 	);
 
-	// Only add legacy forums if it is enabled
-	// prevents conflicts with bbPress, which also uses the same 'forums' id.
-	if ( class_exists( 'BP_Forums_Component' ) ) {
-		$components[] = 'forums';
-	}
-
 	return $components;
 }
 
@@ -458,30 +503,29 @@ function bp_core_get_packaged_component_ids() {
  *                      empty string if the list is not found.
  */
 function bp_core_get_directory_page_ids( $status = 'active' ) {
-	$page_ids = bp_get_option( 'bp-pages' );
+	$page_ids = bp_get_option( 'bp-pages', array() );
 
-	// Ensure that empty indexes are unset. Should only matter in edge cases.
-	if ( !empty( $page_ids ) && is_array( $page_ids ) ) {
-		foreach( (array) $page_ids as $component_name => $page_id ) {
-			if ( empty( $component_name ) || empty( $page_id ) ) {
-				unset( $page_ids[ $component_name ] );
-			}
+	// Loop through pages
+	foreach ( $page_ids as $component_name => $page_id ) {
 
-			// 'register' and 'activate' do not have components, but should be whitelisted.
-			if ( 'register' === $component_name || 'activate' === $component_name ) {
-				continue;
-			}
+		// Ensure that empty indexes are unset. Should only matter in edge cases.
+		if ( empty( $component_name ) || empty( $page_id ) ) {
+			unset( $page_ids[ $component_name ] );
+		}
 
-			// Trashed pages should not appear in results.
-			if ( 'trash' == get_post_status( $page_id ) ) {
-				unset( $page_ids[ $component_name ] );
+		// Trashed pages should never appear in results.
+		if ( 'trash' == get_post_status( $page_id ) ) {
+			unset( $page_ids[ $component_name ] );
+		}
 
-			}
+		// 'register' and 'activate' do not have components, but should be whitelisted.
+		if ( in_array( $component_name, array( 'register', 'activate' ), true ) ) {
+			continue;
+		}
 
-			// Remove inactive component pages, if required.
-			if ( 'active' === $status && ! bp_is_active( $component_name ) ) {
-				unset( $page_ids[ $component_name ] );
-			}
+		// Remove inactive component pages.
+		if ( ( 'active' === $status ) && ! bp_is_active( $component_name ) ) {
+			unset( $page_ids[ $component_name ] );
 		}
 	}
 
@@ -489,10 +533,12 @@ function bp_core_get_directory_page_ids( $status = 'active' ) {
 	 * Filters the list of BP directory pages from the appropriate meta table.
 	 *
 	 * @since 1.5.0
+	 * @since 2.9.0 Add $status parameter
 	 *
-	 * @param array $page_ids Array of directory pages.
+	 * @param array  $page_ids Array of directory pages.
+	 * @param string $status   Page status to limit results to
 	 */
-	return apply_filters( 'bp_core_get_directory_page_ids', $page_ids );
+	return (array) apply_filters( 'bp_core_get_directory_page_ids', $page_ids, $status );
 }
 
 /**
@@ -500,8 +546,8 @@ function bp_core_get_directory_page_ids( $status = 'active' ) {
  *
  * @since 2.6.0
  *
- * @param string $component The slug representing the component. Defaults to the current component.
- * @return int|bool The ID of the directory page associated with the component. False if none is found.
+ * @param string|null $component The slug representing the component. Defaults to the current component.
+ * @return int|false The ID of the directory page associated with the component. False if none is found.
  */
 function bp_core_get_directory_page_id( $component = null ) {
 	if ( ! $component ) {
@@ -632,7 +678,7 @@ function bp_core_add_page_mappings( $components, $existing = 'keep' ) {
 
 	// Delete any existing pages.
 	if ( 'delete' === $existing ) {
-		foreach ( (array) $pages as $page_id ) {
+		foreach ( $pages as $page_id ) {
 			wp_delete_post( $page_id, true );
 		}
 
@@ -824,7 +870,7 @@ function bp_core_add_root_component( $slug ) {
 
 	// If there was no match, add a page for this root component.
 	if ( empty( $match ) ) {
-		$add_root_items   = $bp->add_root();
+		$add_root_items   = $bp->add_root;
 		$add_root_items[] = $slug;
 		$bp->add_root     = $add_root_items;
 	}
@@ -858,7 +904,7 @@ function bp_core_create_root_component_page() {
 		) );
 	}
 
-	$page_ids = array_merge( (array) $new_page_ids, (array) bp_core_get_directory_page_ids( 'all' ) );
+	$page_ids = array_merge( $new_page_ids, bp_core_get_directory_page_ids( 'all' ) );
 	bp_core_update_directory_page_ids( $page_ids );
 }
 
@@ -882,7 +928,7 @@ function bp_core_add_illegal_names() {
  * @since 2.7.0 The `$component` parameter was made optional, with the current component
  *              as the fallback value.
  *
- * @param string $component Optional. Component name. Defaults to current component.
+ * @param string|null $component Optional. Component name. Defaults to current component.
  * @return string|bool Query argument on success. False on failure.
  */
 function bp_core_get_component_search_query_arg( $component = null ) {
@@ -991,7 +1037,11 @@ function bp_core_redirect( $location = '', $status = 302 ) {
 	buddypress()->no_status_set = true;
 
 	wp_safe_redirect( $location, $status );
-	die;
+
+	// If PHPUnit is running, do not kill execution.
+	if ( ! defined( 'BP_TESTS_DIR' ) ) {
+		die;
+	}
 }
 
 /**
@@ -1299,7 +1349,7 @@ function bp_core_time_since( $older_date, $newer_date = false ) {
  * @since 2.7.0
  *
  * @param string String of date to convert. Timezone should be UTC before using this.
- * @return string
+ * @return string|null
  */
  function bp_core_iso8601_date( $timestamp = '' ) {
 	echo bp_core_get_iso8601_date( $timestamp );
@@ -1458,7 +1508,7 @@ function bp_core_render_message() {
  *
  *       usermeta table.
  *
- * @return bool|null Returns false if there is nothing to do.
+ * @return false|null Returns false if there is nothing to do.
  */
 function bp_core_record_activity() {
 
@@ -1699,26 +1749,6 @@ function bp_use_embed_in_activity_replies() {
 }
 
 /**
- * Are oembeds allowed in forum posts?
- *
- * @since 1.5.0
- *
- * @return bool False when forum post embed support is disabled; true when
- *              enabled. Default: true.
- */
-function bp_use_embed_in_forum_posts() {
-
-	/**
-	 * Filters whether or not oEmbeds are allowed in forum posts.
-	 *
-	 * @since 1.5.0
-	 *
-	 * @param bool $value Whether or not oEmbeds are allowed.
-	 */
-	return apply_filters( 'bp_use_embed_in_forum_posts', !defined( 'BP_EMBED_DISABLE_FORUM_POSTS' ) || !BP_EMBED_DISABLE_FORUM_POSTS );
-}
-
-/**
  * Are oembeds allowed in private messages?
  *
  * @since 1.5.0
@@ -1746,7 +1776,7 @@ function bp_use_embed_in_private_messages() {
  * @param string     $content The content to check.
  * @param string|int $type    The type to check. Can also use a bitmask. See the class constants in the
  *                             BP_Media_Extractor class for more info.
- * @return array|bool          If media exists, will return array of media metadata. Else, boolean false.
+ * @return false|array If media exists, will return array of media metadata. Else, boolean false.
  */
 function bp_core_extract_media_from_content( $content = '', $type = 'all' ) {
 	if ( is_string( $type ) ) {
@@ -2324,11 +2354,6 @@ function bp_core_action_search_site( $slug = '' ) {
 				$slug = bp_is_active( 'blogs' )  ? bp_get_blogs_root_slug()  : '';
 				break;
 
-			case 'forums':
-				$slug = bp_is_active( 'forums' ) ? bp_get_forums_root_slug() : '';
-				$query_string = '/?fs=';
-				break;
-
 			case 'groups':
 				$slug = bp_is_active( 'groups' ) ? bp_get_groups_root_slug() : '';
 				break;
@@ -2372,7 +2397,7 @@ function bp_remove_adjacent_posts_rel_link() {
 		return;
 	}
 
-	remove_action( 'wp_head', 'adjacent_posts_rel_link_wp_head', 10, 0 );
+	remove_action( 'wp_head', 'adjacent_posts_rel_link_wp_head', 10 );
 }
 add_action( 'bp_init', 'bp_remove_adjacent_posts_rel_link' );
 
@@ -2432,10 +2457,6 @@ function bp_core_get_components( $type = 'all' ) {
 	);
 
 	$retired_components = array(
-		'forums' => array(
-			'title'       => __( 'Group Forums', 'buddypress' ),
-			'description' => sprintf( __( 'BuddyPress Forums are retired. Use %s.', 'buddypress' ), '<a href="https://bbpress.org/">bbPress</a>' )
-		),
 	);
 
 	$optional_components = array(
@@ -2466,10 +2487,6 @@ function bp_core_get_components( $type = 'all' ) {
 		'groups'   => array(
 			'title'       => __( 'User Groups', 'buddypress' ),
 			'description' => __( 'Groups allow your users to organize themselves into specific public, private or hidden sections with separate activity streams and member listings.', 'buddypress' )
-		),
-		'forums'   => array(
-			'title'       => __( 'Group Forums (Legacy)', 'buddypress' ),
-			'description' => __( 'Group forums allow for focused, bulletin-board style conversations.', 'buddypress' )
 		),
 		'blogs'    => array(
 			'title'       => __( 'Site Tracking', 'buddypress' ),
@@ -3059,7 +3076,7 @@ function bp_get_email( $email_type ) {
  * @param string|array|int|WP_User $to         Either a email address, user ID, WP_User object,
  *                                             or an array containg the address and name.
  * @param array                    $args {
- *     Optional. Array of extra. parameters.
+ *     Optional. Array of extra parameters.
  *
  *     @type array $tokens Optional. Assocative arrays of string replacements for the email.
  * }
@@ -3104,6 +3121,23 @@ function bp_send_email( $email_type, $to, $args = array() ) {
 	// From, subject, content are set automatically.
 	$email->set_to( $to );
 	$email->set_tokens( $args['tokens'] );
+
+	/**
+	 * Gives access to an email before it is sent.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param BP_Email                 $email      The email (object) about to be sent.
+	 * @param string                   $email_type Type of email being sent.
+	 * @param string|array|int|WP_User $to         Either a email address, user ID, WP_User object,
+	 *                                             or an array containg the address and name.
+     * @param array                    $args {
+	 *     Optional. Array of extra parameters.
+	 *
+	 *     @type array $tokens Optional. Assocative arrays of string replacements for the email.
+	 * }
+	 */
+	do_action_ref_array( 'bp_send_email', array( &$email, $email_type, $to, $args ) );
 
 	$status = $email->validate();
 	if ( is_wp_error( $status ) ) {
@@ -3194,6 +3228,8 @@ function bp_send_email( $email_type, $to, $args = array() ) {
  * Return email appearance settings.
  *
  * @since 2.5.0
+ * @since 3.0.0 Added "direction" parameter for LTR/RTL email support, and
+ *              "link_text_color" to override that in the email body.
  *
  * @return array
  */
@@ -3210,6 +3246,7 @@ function bp_email_get_appearance_settings() {
 		'highlight_color'   => '#D84800',
 		'header_text_color' => '#000000',
 		'header_text_size'  => 30,
+		'direction'         => is_rtl() ? 'right' : 'left',
 
 		'footer_text' => sprintf(
 			/* translators: email disclaimer, e.g. "© 2016 Site Name". */
@@ -3219,11 +3256,18 @@ function bp_email_get_appearance_settings() {
 		),
 	);
 
-	return bp_parse_args(
+	$options = bp_parse_args(
 		bp_get_option( 'bp_email_options', array() ),
 		$default_args,
 		'email_appearance_settings'
 	);
+
+	// Link text colour defaults to the highlight colour.
+	if ( ! isset( $options['link_text_color'] ) ) {
+		$options['link_text_color'] = $options['highlight_color'];
+	}
+
+	return $options;
 }
 
 /**
@@ -3246,6 +3290,7 @@ function bp_email_get_template( WP_Post $object ) {
 	 * @param WP_Post $object WP_Post object.
 	 */
 	return apply_filters( 'bp_email_get_template', array(
+		"assets/emails/{$single}-{$object->post_name}.php",
 		"{$single}-{$object->post_name}.php",
 		"{$single}.php",
 		"assets/emails/{$single}.php",
@@ -3343,6 +3388,9 @@ function bp_email_get_schema() {
 			'post_content' => __( "Thanks for registering!\n\nTo complete the activation of your account, go to the following link: <a href=\"{{{activate.url}}}\">{{{activate.url}}}</a>", 'buddypress' ),
 			/* translators: do not remove {} brackets or translate its contents. */
 			'post_excerpt' => __( "Thanks for registering!\n\nTo complete the activation of your account, go to the following link: {{{activate.url}}}", 'buddypress' ),
+			'args'         => array(
+				'multisite' => true,
+			),
 		),
 		'core-user-registration-with-blog' => array(
 			/* translators: do not remove {} brackets or translate its contents. */
@@ -3351,6 +3399,9 @@ function bp_email_get_schema() {
 			'post_content' => __( "Thanks for registering!\n\nTo complete the activation of your account and site, go to the following link: <a href=\"{{{activate-site.url}}}\">{{{activate-site.url}}}</a>.\n\nAfter you activate, you can visit your site at <a href=\"{{{user-site.url}}}\">{{{user-site.url}}}</a>.", 'buddypress' ),
 			/* translators: do not remove {} brackets or translate its contents. */
 			'post_excerpt' => __( "Thanks for registering!\n\nTo complete the activation of your account and site, go to the following link: {{{activate-site.url}}}\n\nAfter you activate, you can visit your site at {{{user-site.url}}}.", 'buddypress' ),
+			'args'         => array(
+				'multisite' => true,
+			),
 		),
 		'friends-request' => array(
 			/* translators: do not remove {} brackets or translate its contents. */
@@ -3382,7 +3433,7 @@ function bp_email_get_schema() {
 			/* translators: do not remove {} brackets or translate its contents. */
 			'post_content' => __( "<a href=\"{{{inviter.url}}}\">{{inviter.name}}</a> has invited you to join the group: &quot;{{group.name}}&quot;.\n<a href=\"{{{invites.url}}}\">Go here to accept your invitation</a> or <a href=\"{{{group.url}}}\">visit the group</a> to learn more.", 'buddypress' ),
 			/* translators: do not remove {} brackets or translate its contents. */
-			'post_excerpt' => __( "{{inviter.name}} has invited you to join the group: \"{{group.name}}\".\n\nTo accept your invitation, visit: {{{invites.url}}}\n\nTo learn more about the group, visit {{{group.url}}}.\nTo view {{inviter.name}}'s profile, visit: {{{inviter.url}}}", 'buddypress' ),
+			'post_excerpt' => __( "{{inviter.name}} has invited you to join the group: \"{{group.name}}\".\n\nTo accept your invitation, visit: {{{invites.url}}}\n\nTo learn more about the group, visit: {{{group.url}}}.\nTo view {{inviter.name}}'s profile, visit: {{{inviter.url}}}", 'buddypress' ),
 		),
 		'groups-member-promoted' => array(
 			/* translators: do not remove {} brackets or translate its contents. */
@@ -3520,27 +3571,11 @@ function bp_email_get_type_schema( $field = 'description' ) {
 		),
 	);
 
-	$groups_details_updated = array(
-		'description'	=> __( "A group's details were updated.", 'buddypress' ),
-		'unsubscribe'	=> array(
-			'meta_key'	=> 'notification_groups_group_updated',
-			'message'	=> __( 'You will no longer receive emails when one of your groups is updated.', 'buddypress' ),
-		),
-	);
-
 	$groups_invitation = array(
 		'description'	=> __( 'A member has sent a group invitation to the recipient.', 'buddypress' ),
 		'unsubscribe'	=> array(
 			'meta_key'	=> 'notification_groups_invite',
 			'message'	=> __( 'You will no longer receive emails when you are invited to join a group.', 'buddypress' ),
-		),
-	);
-
-	$groups_member_promoted = array(
-		'description'	=> __( "Recipient's status within a group has changed.", 'buddypress' ),
-		'unsubscribe'	=> array(
-			'meta_key'	=> 'notification_groups_admin_promotion',
-			'message'	=> __( 'You will no longer receive emails when you have been promoted in a group.', 'buddypress' ),
 		),
 	);
 
@@ -3621,7 +3656,7 @@ function bp_email_get_type_schema( $field = 'description' ) {
  * @since 2.7.0
  */
 function bp_email_unsubscribe_handler() {
-	$emails         = bp_email_get_type_schema( 'all' );
+	$emails         = bp_email_get_unsubscribe_type_schema();
 	$raw_email_type = ! empty( $_GET['nt'] ) ? $_GET['nt'] : '';
 	$raw_hash       = ! empty( $_GET['nh'] ) ? $_GET['nh'] : '';
 	$raw_user_id    = ! empty( $_GET['uid'] ) ? absint( $_GET['uid'] ) : 0;
@@ -3629,13 +3664,13 @@ function bp_email_unsubscribe_handler() {
 
 	// Check required values.
 	if ( ! $raw_user_id || ! $raw_email_type || ! $raw_hash || ! array_key_exists( $raw_email_type, $emails ) ) {
-		$redirect_to = site_url( 'wp-login.php' );
+		$redirect_to = wp_login_url();
 		$result_msg  = __( 'Something has gone wrong.', 'buddypress' );
 		$unsub_msg   = __( 'Please log in and go to your settings to unsubscribe from notification emails.', 'buddypress' );
 
 	// Check valid hash.
 	} elseif ( ! hash_equals( $new_hash, $raw_hash ) ) {
-		$redirect_to = site_url( 'wp-login.php' );
+		$redirect_to = wp_login_url();
 		$result_msg  = __( 'Something has gone wrong.', 'buddypress' );
 		$unsub_msg   = __( 'Please log in and go to your settings to unsubscribe from notification emails.', 'buddypress' );
 
@@ -3702,10 +3737,10 @@ function bp_email_unsubscribe_handler() {
  * @return string The unsubscribe link.
  */
 function bp_email_get_unsubscribe_link( $args ) {
-	$emails = bp_email_get_type_schema( 'all' );
+	$emails = bp_email_get_unsubscribe_type_schema();
 
 	if ( empty( $args['notification_type'] ) || ! array_key_exists( $args['notification_type'], $emails ) ) {
-		return site_url( 'wp-login.php' );
+		return wp_login_url();
 	}
 
 	$email_type  = $args['notification_type'];
@@ -3744,4 +3779,64 @@ function bp_email_get_unsubscribe_link( $args ) {
  */
 function bp_email_get_salt() {
 	return bp_get_option( 'bp-emails-unsubscribe-salt', null );
+}
+
+/**
+ * Get a list of emails for use in our unsubscribe functions.
+ *
+ * @since 2.8.0
+ *
+ * @see https://buddypress.trac.wordpress.org/ticket/7431
+ *
+ * @return array The array of email types and their schema.
+ */
+function bp_email_get_unsubscribe_type_schema() {
+	$emails = bp_email_get_type_schema( 'all' );
+
+	/**
+	 * Filters the return of `bp_email_get_type_schema( 'all' )` for use with
+	 * our unsubscribe functionality.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param array $emails The array of email types and their schema.
+	 */
+	return (array) apply_filters( 'bp_email_get_unsubscribe_type_schema', $emails );
+}
+
+/**
+ * Get BuddyPress content allowed tags.
+ *
+ * @since  3.0.0
+ *
+ * @global array $allowedtags KSES allowed HTML elements.
+ * @return array              BuddyPress content allowed tags.
+ */
+function bp_get_allowedtags() {
+	global $allowedtags;
+
+	return array_merge_recursive( $allowedtags, array(
+		'a' => array(
+			'aria-label'      => array(),
+			'class'           => array(),
+			'data-bp-tooltip' => array(),
+			'id'              => array(),
+			'rel'             => array(),
+		),
+		'img' => array(
+			'src'    => array(),
+			'alt'    => array(),
+			'width'  => array(),
+			'height' => array(),
+			'class'  => array(),
+			'id'     => array(),
+		),
+		'span'=> array(
+			'class'          => array(),
+			'data-livestamp' => array(),
+		),
+		'ul' => array(),
+		'ol' => array(),
+		'li' => array(),
+	) );
 }

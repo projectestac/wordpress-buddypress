@@ -13,8 +13,6 @@
  * The following functions are wrappers for hooks, allowing them to be
  * manually called and/or piggy-backed on top of other hooks if needed.
  *
- * @todo use anonymous functions when PHP minimum requirement allows (5.3)
- *
  * @package BuddyPress
  * @subpackage Core
  * @since 1.7.0
@@ -33,6 +31,23 @@ function bp_include() {
 	 * @since 1.2.5
 	 */
 	do_action( 'bp_include' );
+}
+
+/**
+ * Fire the 'bp_late_include' action for loading conditional files.
+ *
+ * @since 3.0.0
+ */
+function bp_late_include() {
+
+	/**
+	 * Fires the 'bp_late_include' action.
+	 *
+	 * Allow for conditional includes on certain pages.
+	 *
+	 * @since 3.0.0
+	 */
+	do_action( 'bp_late_include' );
 }
 
 /**
@@ -140,7 +155,7 @@ function bp_setup_admin_bar() {
 		 *
 		 * @since 1.5.0
 		 */
-		do_action( 'bp_setup_admin_bar' );
+		do_action( 'bp_setup_admin_bar', array() );
 	}
 }
 

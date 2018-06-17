@@ -144,9 +144,14 @@ class BP_Messages_Thread {
 			$order = 'ASC';
 		}
 
+		$user_id =
+			bp_displayed_user_id() ?
+			bp_displayed_user_id() :
+			bp_loggedin_user_id();
+
 		// Merge $args with our defaults.
 		$r = wp_parse_args( $args, array(
-			'user_id'           => bp_loggedin_user_id(),
+			'user_id'           => $user_id,
 			'update_meta_cache' => true
 		) );
 
@@ -453,8 +458,7 @@ class BP_Messages_Thread {
 				5 => 'search_terms',
 			);
 
-			$func_args = func_get_args();
-			$args      = bp_core_parse_args_array( $old_args_keys, $func_args );
+			$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 		}
 
 		$r = bp_parse_args( $args, array(
@@ -608,16 +612,33 @@ class BP_Messages_Thread {
 	 * @since 1.0.0
 	 *
 	 * @param int $thread_id The message thread ID.
+	 *
+	 * @return false|int Number of threads marked as read or false on error.
 	 */
 	public static function mark_as_read( $thread_id = 0 ) {
 		global $wpdb;
 
-		$bp  = buddypress();
-		$sql = $wpdb->prepare( "UPDATE {$bp->messages->table_name_recipients} SET unread_count = 0 WHERE user_id = %d AND thread_id = %d", bp_loggedin_user_id(), $thread_id );
-		$wpdb->query( $sql );
+		$user_id =
+			bp_displayed_user_id() ?
+			bp_displayed_user_id() :
+			bp_loggedin_user_id();
+
+		$bp     = buddypress();
+		$retval = $wpdb->query( $wpdb->prepare( "UPDATE {$bp->messages->table_name_recipients} SET unread_count = 0 WHERE user_id = %d AND thread_id = %d", $user_id, $thread_id ) );
 
 		wp_cache_delete( 'thread_recipients_' . $thread_id, 'bp_messages' );
-		wp_cache_delete( bp_loggedin_user_id(), 'bp_messages_unread_count' );
+		wp_cache_delete( $user_id, 'bp_messages_unread_count' );
+
+		/**
+		 * Fires when messages thread was marked as read.
+		 *
+		 * @since 2.8.0
+		 *
+		 * @param int $thread_id The message thread ID.
+		 */
+		do_action( 'messages_thread_mark_as_read', $thread_id );
+
+		return $retval;
 	}
 
 	/**
@@ -626,16 +647,33 @@ class BP_Messages_Thread {
 	 * @since 1.0.0
 	 *
 	 * @param int $thread_id The message thread ID.
+	 *
+	 * @return false|int Number of threads marked as unread or false on error.
 	 */
 	public static function mark_as_unread( $thread_id = 0 ) {
 		global $wpdb;
 
-		$bp  = buddypress();
-		$sql = $wpdb->prepare( "UPDATE {$bp->messages->table_name_recipients} SET unread_count = 1 WHERE user_id = %d AND thread_id = %d", bp_loggedin_user_id(), $thread_id );
-		$wpdb->query( $sql );
+		$user_id =
+			bp_displayed_user_id() ?
+			bp_displayed_user_id() :
+			bp_loggedin_user_id();
+
+		$bp     = buddypress();
+		$retval = $wpdb->query( $wpdb->prepare( "UPDATE {$bp->messages->table_name_recipients} SET unread_count = 1 WHERE user_id = %d AND thread_id = %d", $user_id, $thread_id ) );
 
 		wp_cache_delete( 'thread_recipients_' . $thread_id, 'bp_messages' );
-		wp_cache_delete( bp_loggedin_user_id(), 'bp_messages_unread_count' );
+		wp_cache_delete( $user_id, 'bp_messages_unread_count' );
+
+		/**
+		 * Fires when messages thread was marked as unread.
+		 *
+		 * @since 2.8.0
+		 *
+		 * @param int $thread_id The message thread ID.
+		 */
+		do_action( 'messages_thread_mark_as_unread', $thread_id );
+
+		return $retval;
 	}
 
 	/**
@@ -777,7 +815,7 @@ class BP_Messages_Thread {
 	 * @since 1.0.0
 	 *
 	 * @param int $thread_id The message thread ID.
-	 * @return int|null The message thread ID on success, null on failure.
+	 * @return false|int|null The message thread ID on success, null on failure.
 	 */
 	public static function is_valid( $thread_id = 0 ) {
 

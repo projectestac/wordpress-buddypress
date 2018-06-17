@@ -4,11 +4,12 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
 
-<form action="<?php bp_activity_post_form_action(); ?>" method="post" id="whats-new-form" name="whats-new-form" role="complementary">
+<form action="<?php bp_activity_post_form_action(); ?>" method="post" id="whats-new-form" name="whats-new-form">
 
 	<?php
 

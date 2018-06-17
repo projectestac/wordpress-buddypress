@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -67,4 +68,4 @@ do_action( 'bp_before_group_admin_form' ); ?>
  *
  * @since 2.7.0
  */
-do_action( 'bp_after_group_admin_form' ); ?>
+do_action( 'bp_after_group_admin_form' );

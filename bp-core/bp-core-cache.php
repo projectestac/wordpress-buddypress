@@ -73,19 +73,22 @@ add_action( 'deleted_user',                   'bp_core_clear_member_count_caches
  *
  * @param int $post_id ID of the page that was saved.
  */
-function bp_core_clear_directory_pages_cache_page_edit( $post_id ) {
-	if ( ! bp_is_root_blog() ) {
-		return;
-	}
+function bp_core_clear_directory_pages_cache_page_edit( $post_id = 0 ) {
 
 	// Bail if BP is not defined here.
 	if ( ! buddypress() ) {
 		return;
 	}
 
+	// Bail if not on the root blog
+	if ( ! bp_is_root_blog() ) {
+		return;
+	}
+
 	$page_ids = bp_core_get_directory_page_ids( 'all' );
 
-	if ( ! in_array( $post_id, (array) $page_ids ) ) {
+	// Bail if post ID is not a directory page
+	if ( ! in_array( $post_id, $page_ids ) ) {
 		return;
 	}
 
@@ -191,7 +194,7 @@ function bp_get_non_cached_ids( $item_ids, $cache_group ) {
  *     @type string       $cache_key_prefix Optional. The prefix to use when creating
  *                                          cache key names. Default: the value of $meta_table.
  * }
- * @return array|bool Metadata cache for the specified objects, or false on failure.
+ * @return false|array Metadata cache for the specified objects, or false on failure.
  */
 function bp_update_meta_cache( $args = array() ) {
 	global $wpdb;
@@ -301,6 +304,23 @@ function bp_core_get_incremented_cache( $key, $group ) {
 function bp_core_set_incremented_cache( $key, $group, $ids ) {
 	$cache_key = bp_core_get_incremented_cache_key( $key, $group );
 	return wp_cache_set( $cache_key, $ids, $group );
+}
+
+/**
+ * Delete a value that has been cached using an incremented key.
+ *
+ * A utility function for use by query methods like BP_Activity_Activity::get().
+ *
+ * @since 3.0.0
+ * @see bp_core_set_incremented_cache()
+ *
+ * @param string $key   Unique key for the query. Usually a SQL string.
+ * @param string $group Cache group. Eg 'bp_activity'.
+ * @return bool True on successful removal, false on failure.
+ */
+function bp_core_delete_incremented_cache( $key, $group ) {
+	$cache_key = bp_core_get_incremented_cache_key( $key, $group );
+	return wp_cache_delete( $cache_key, $group );
 }
 
 /**

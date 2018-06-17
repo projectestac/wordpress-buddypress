@@ -65,7 +65,7 @@ class BP_Core extends BP_Component {
 		 *
 		 * @param array $value Array of included and optional components.
 		 */
-		$bp->optional_components = apply_filters( 'bp_optional_components', array( 'activity', 'blogs', 'forums', 'friends', 'groups', 'messages', 'notifications', 'settings', 'xprofile' ) );
+		$bp->optional_components = apply_filters( 'bp_optional_components', array( 'activity', 'blogs', 'friends', 'groups', 'messages', 'notifications', 'settings', 'xprofile' ) );
 
 		/**
 		 * Filters the required components.
@@ -254,10 +254,8 @@ class BP_Core extends BP_Component {
 		$bp->core->table_name_notifications = $bp->table_prefix . 'bp_notifications';
 
 		// Backward compatibility for plugins modifying the legacy bp_nav and bp_options_nav global properties.
-		if ( buddypress()->do_nav_backcompat ) {
-			$bp->bp_nav         = new BP_Core_BP_Nav_BackCompat();
-			$bp->bp_options_nav = new BP_Core_BP_Options_Nav_BackCompat();
-		}
+		$bp->bp_nav         = new BP_Core_BP_Nav_BackCompat();
+		$bp->bp_options_nav = new BP_Core_BP_Options_Nav_BackCompat();
 
 		/**
 		 * Used to determine if user has admin rights on current content. If the

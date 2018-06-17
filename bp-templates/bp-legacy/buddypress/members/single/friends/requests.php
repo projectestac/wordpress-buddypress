@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -116,4 +117,4 @@ do_action( 'bp_before_member_friend_requests_content' ); ?>
  *
  * @since 1.2.0
  */
-do_action( 'bp_after_member_friend_requests_content' ); ?>
+do_action( 'bp_after_member_friend_requests_content' );

@@ -288,15 +288,6 @@ function bp_core_activation_notice() {
 		}
 	}
 
-	// Special case: If the Forums component is orphaned, but the bbPress 1.x installation is
-	// not correctly set up, don't show a nag. (In these cases, it's probably the case that the
-	// user is using bbPress 2.x; see https://buddypress.trac.wordpress.org/ticket/4292.
-	if ( isset( $bp->forums->name ) && in_array( $bp->forums->name, $orphaned_components ) && !bp_forums_is_installed_correctly() ) {
-		$forum_key = array_search( $bp->forums->name, $orphaned_components );
-		unset( $orphaned_components[$forum_key] );
-		$orphaned_components = array_values( $orphaned_components );
-	}
-
 	if ( !empty( $orphaned_components ) ) {
 		$admin_url = bp_get_admin_url( add_query_arg( array( 'page' => 'bp-page-settings' ), 'admin.php' ) );
 		$notice    = sprintf(
@@ -314,7 +305,7 @@ function bp_core_activation_notice() {
 
 	// BP components cannot share a single WP page. Check for duplicate assignments, and post a message if found.
 	$dupe_names = array();
-	$page_ids   = (array)bp_core_get_directory_page_ids();
+	$page_ids   = bp_core_get_directory_page_ids();
 	$dupes      = array_diff_assoc( $page_ids, array_unique( $page_ids ) );
 
 	if ( !empty( $dupes ) ) {
@@ -366,14 +357,14 @@ function bp_do_activation_redirect() {
 		return;
 	}
 
-	$query_args = array( 'page' => 'bp-about' );
+	$query_args = array();
 	if ( get_transient( '_bp_is_new_install' ) ) {
 		$query_args['is_new_install'] = '1';
 		delete_transient( '_bp_is_new_install' );
 	}
 
-	// Redirect to BuddyPress about page.
-	wp_safe_redirect( add_query_arg( $query_args, bp_get_admin_url( 'index.php' ) ) );
+	// Redirect to dashboard and trigger the Hello screen.
+	wp_safe_redirect( add_query_arg( $query_args, bp_get_admin_url( '?hello=buddypress' ) ) );
 }
 
 /** UI/Styling ****************************************************************/
@@ -430,28 +421,19 @@ function bp_core_get_admin_tabs( $active_tab = '' ) {
 			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bp-components' ), 'admin.php' ) ),
 			'name' => __( 'Components', 'buddypress' )
 		),
-		'1' => array(
-			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bp-page-settings' ), 'admin.php' ) ),
-			'name' => __( 'Pages', 'buddypress' )
-		),
 		'2' => array(
 			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bp-settings' ), 'admin.php' ) ),
 			'name' => __( 'Options', 'buddypress' )
 		),
+		'1' => array(
+			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bp-page-settings' ), 'admin.php' ) ),
+			'name' => __( 'Pages', 'buddypress' )
+		),
+		'3' => array(
+			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bp-credits' ), 'admin.php' ) ),
+			'name' => __( 'Credits', 'buddypress' )
+		),
 	);
-
-	// If forums component is active, add additional tab.
-	if ( bp_is_active( 'forums' ) && class_exists( 'BP_Forums_Component' ) ) {
-
-		// Enqueue thickbox.
-		wp_enqueue_script( 'thickbox' );
-		wp_enqueue_style( 'thickbox' );
-
-		$tabs['3'] = array(
-			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bb-forums-setup'  ), 'admin.php' ) ),
-			'name' => __( 'Forums', 'buddypress' )
-		);
-	}
 
 	/**
 	 * Filters the tab data used in our wp-admin screens.
@@ -863,7 +845,7 @@ function bp_admin_email_maybe_add_translation_notice() {
 
 	bp_core_add_admin_notice(
 		sprintf(
-			__( 'Are your emails in the wrong language? Go to <a href="%s">BuddyPress Tools and run the "reinstall emails"</a> tool.', 'buddypress' ),
+			__( 'Are these emails not written in your site\'s language? Go to <a href="%s">BuddyPress Tools and try the "reinstall emails"</a> tool.', 'buddypress' ),
 			esc_url( add_query_arg( 'page', 'bp-tools', bp_get_admin_url( $admin_page ) ) )
 		),
 		'updated'
@@ -1114,191 +1096,6 @@ function bp_core_admin_user_spammed_js() {
 	<?php
 }
 
-/** Upgrade protection *******************************************************/
-
-/**
- * Determines whether the current installation is running PHP 5.3 or greater.
- *
- * BuddyPress 2.8 introduces a minimum PHP requirement of PHP 5.3.
- *
- * @since 2.7.0
- *
- * @return bool
- */
-function bp_core_admin_is_running_php53_or_greater() {
-	return version_compare( PHP_VERSION, '5.3', '>=' );
-}
-
-/**
- * Replaces WP's default update notice on plugins.php with an error message, when site is not running PHP 5.3 or greater.
- *
- * @since 2.7.0
- */
-function bp_core_admin_maybe_disable_update_row_for_php53_requirement() {
-	if ( bp_core_admin_is_running_php53_or_greater() ) {
-		return;
-	}
-
-	$loader = basename( constant( 'BP_PLUGIN_DIR' ) ) . '/bp-loader.php';
-
-	remove_action( "after_plugin_row_{$loader}", 'wp_plugin_update_row', 10, 2 );
-	add_action( "after_plugin_row_{$loader}", 'bp_core_admin_php52_plugin_row', 10, 2 );
-}
-add_action( 'load-plugins.php', 'bp_core_admin_maybe_disable_update_row_for_php53_requirement', 100 );
-
-/**
- * On the "Dashboard > Updates" page, remove BuddyPress from plugins list if PHP < 5.3.
- *
- * @since 2.7.0
- */
-function bp_core_admin_maybe_remove_from_update_core() {
-	if ( bp_core_admin_is_running_php53_or_greater() ) {
-		return;
-	}
-
-	// Add filter to remove BP from the update plugins list.
-	add_filter( 'site_transient_update_plugins', 'bp_core_admin_remove_buddypress_from_update_transient' );
-}
-add_action( 'load-update-core.php', 'bp_core_admin_maybe_remove_from_update_core' );
-
-/**
- * Filter callback to remove BuddyPress from the update plugins list.
- *
- * Attached to the 'site_transient_update_plugins' filter.
- *
- * @since 2.7.0
- *
- * @param  object $retval Object of plugin update data.
- * @return object
- */
-function bp_core_admin_remove_buddypress_from_update_transient( $retval ) {
-	$loader = basename( constant( 'BP_PLUGIN_DIR' ) ) . '/bp-loader.php';
-
-	// Remove BP from update plugins list.
-	if ( isset( $retval->response[ $loader ] ) ) {
-		unset( $retval->response[ $loader ] );
-	}
-
-	return $retval;
-}
-
-/**
- * Outputs a replacement for WP's default update notice, when site is not running PHP 5.3 or greater.
- *
- * When we see that a site is not running PHP 5.3 and is trying to update to
- * BP 2.8+, we replace WP's default notice with our own, which both provides a
- * link to our documentation of the requirement, and removes the link that
- * allows a single plugin to be updated.
- *
- * @since 2.7.0
- *
- * @param string $file        Plugin filename. buddypress/bp-loader.php.
- * @param array  $plugin_data Data about the BuddyPress plugin, as returned by the
- *                            plugins API.
- */
-function bp_core_admin_php52_plugin_row( $file, $plugin_data ) {
-	if ( is_multisite() && ! is_network_admin() ) {
-		return;
-	}
-
-	$current = get_site_transient( 'update_plugins' );
-	if ( ! isset( $current->response[ $file ] ) ) {
-		return false;
-	}
-
-	$response = $current->response[ $file ];
-
-	// No need to do this if update is for < BP 2.8.
-	if ( version_compare( $response->new_version, '2.8', '<' ) ) {
-		return false;
-	}
-
-	$wp_list_table = _get_list_table( 'WP_Plugins_List_Table' );
-
-	if ( is_network_admin() ) {
-		$active_class = is_plugin_active_for_network( $file ) ? ' active' : '';
-	} else {
-		$active_class = is_plugin_active( $file ) ? ' active' : '';
-	}
-
-	// WP 4.6 uses different markup for the plugin row notice.
-	if ( function_exists( 'wp_get_ext_types' ) ) {
-		$p = '<p>%s</p>';
-
-	// WP < 4.6.
-	} else {
-		$p = '%s';
-
-		// Ugh.
-		$active_class .= ' not-shiny';
-	}
-
-	echo '<tr class="plugin-update-tr' . $active_class . '" id="' . esc_attr( $response->slug . '-update' ) . '" data-slug="' . esc_attr( $response->slug ) . '" data-plugin="' . esc_attr( $file ) . '"><td colspan="' . esc_attr( $wp_list_table->get_column_count() ) . '" class="plugin-update colspanchange"><div class="update-message inline notice notice-error notice-alt">';
-
-	printf( $p,
-		esc_html__( 'A BuddyPress update is available, but your system is not compatible.', 'buddypress' ) . ' ' .
-		sprintf( __( 'See <a href="%s">the Codex guide</a> for more information.', 'buddypress' ), 'https://codex.buddypress.org/getting-started/buddypress-2-8-will-require-php-5-3/' )
-	);
-
-	echo '</div></td></tr>';
-
-	/*
-	 * JavaScript to disable the bulk upgrade checkbox.
-	 * See WP_Plugins_List_Table::single_row().
-	 */
-	$checkbox_id = 'checkbox_' . md5( $plugin_data['Name'] );
-	echo "<script type='text/javascript'>document.getElementById('$checkbox_id').disabled = true;</script>";
-}
-
-/**
- * Add an admin notice to installations that are not running PHP 5.3+.
- *
- * @since 2.7.0
- */
-function bp_core_admin_php53_admin_notice() {
-	// If not on the Plugins page, stop now.
-	if ( 'plugins' !== get_current_screen()->parent_base ) {
-		return;
-	}
-
-	if ( ! current_user_can( 'update_core' ) ) {
-		return;
-	}
-
-	if ( bp_core_admin_is_running_php53_or_greater() ) {
-		return;
-	}
-
-	$notice_id = 'bp28-php53';
-	if ( bp_get_option( "bp-dismissed-notice-$notice_id" ) ) {
-		return;
-	}
-
-	$bp  = buddypress();
-	$min = bp_core_get_minified_asset_suffix();
-
-	wp_enqueue_script(
-		'bp-dismissible-admin-notices',
-		"{$bp->plugin_url}bp-core/admin/js/dismissible-admin-notices{$min}.js",
-		array( 'jquery' ),
-		bp_get_version(),
-		true
-	);
-
-	$php_version = PHP_VERSION;
-
-	?>
-
-	<div id="message" class="error notice is-dismissible bp-is-dismissible" data-noticeid="<?php echo esc_attr( $notice_id ); ?>">
-		<p><strong><?php esc_html_e( 'Your site is not ready for BuddyPress 2.8.', 'buddypress' ); ?></strong></p>
-		<p><?php printf( esc_html__( 'Your site is currently running PHP version %s, while BuddyPress 2.8 will require version 5.3+.', 'buddypress' ), $php_version ); ?> <?php printf( __( 'See <a href="%s">the Codex guide</a> for more information.', 'buddypress' ), 'https://codex.buddypress.org/getting-started/buddypress-2-8-will-require-php-5-3/' ); ?></p>
-		<?php wp_nonce_field( "bp-dismissible-notice-$notice_id", "bp-dismissible-nonce-$notice_id" ); ?>
-	</div>
-	<?php
-}
-add_action( 'admin_notices',         'bp_core_admin_php53_admin_notice' );
-add_action( 'network_admin_notices', 'bp_core_admin_php53_admin_notice' );
-
 /**
  * Catch and process an admin notice dismissal.
  *
@@ -1324,3 +1121,17 @@ function bp_core_admin_notice_dismiss_callback() {
 	wp_send_json_success();
 }
 add_action( 'wp_ajax_bp_dismiss_notice', 'bp_core_admin_notice_dismiss_callback' );
+
+/**
+ * Add a "buddypress" class to body element of wp-admin.
+ *
+ * @since 2.8.0
+ *
+ * @param string $classes CSS classes for the body tag in the admin, a comma separated string.
+ *
+ * @return string
+ */
+function bp_core_admin_body_classes( $classes ) {
+	return $classes . ' buddypress';
+}
+add_filter( 'admin_body_class', 'bp_core_admin_body_classes' );

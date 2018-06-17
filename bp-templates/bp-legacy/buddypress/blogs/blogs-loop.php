@@ -6,6 +6,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -129,4 +130,4 @@ do_action( 'bp_before_blogs_loop' ); ?>
  *
  * @since 1.2.0
  */
-do_action( 'bp_after_blogs_loop' ); ?>
+do_action( 'bp_after_blogs_loop' );

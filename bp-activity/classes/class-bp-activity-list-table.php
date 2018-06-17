@@ -47,7 +47,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 	protected $activity_user_id = array();
 
 	/**
-	 * If users can comment on blog & forum activity items.
+	 * If users can comment on post and comment activity items.
 	 *
 	 * @link https://buddypress.trac.wordpress.org/ticket/6277
 	 *
@@ -63,7 +63,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 	 */
 	public function __construct() {
 
-		// See if activity commenting is enabled for blog / forum activity items.
+		// See if activity commenting is enabled for post/comment activity items.
 		$this->disable_blogforum_comments = bp_disable_blogforum_comments();
 
 		// Define singular and plural labels, as well as whether we support AJAX.
@@ -171,7 +171,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 			$activities['total']      = count( $activities['activities'] );
 
 			// Sort the array by the activity object's date_recorded value.
-			usort( $activities['activities'], create_function( '$a, $b', 'return $a->date_recorded > $b->date_recorded;' ) );
+			usort( $activities['activities'], function( $a, $b ) { return $a->date_recorded > $b->date_recorded; } );
 		}
 
 		// The bp_activity_get function returns an array of objects; cast these to arrays for WP_List_Table.
@@ -592,7 +592,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 			if ( $this->can_comment( $item ) ) {
 				$actions['reply'] = sprintf( '<a href="#" class="reply hide-if-no-js">%s</a>', __( 'Reply', 'buddypress' ) );
 			} else {
-				$actions['reply'] = sprintf( '<span class="form-input-tip" title="%s">%s</span>', __( 'Replies are disabled for this activity item', 'buddypress' ), __( 'Replies disabled', 'buddypress' ) );
+				$actions['reply'] = sprintf( '<span class="form-input-tip">%s</span>', __( 'Replies disabled', 'buddypress' ) );
 			}
 
 			// Edit.
@@ -641,15 +641,10 @@ class BP_Activity_List_Table extends WP_List_Table {
 
 		// Get activity content - if not set, use the action.
 		if ( ! empty( $item['content'] ) ) {
+			$activity = new BP_Activity_Activity( $item['id'] );
 
-			/**
-			 * Filters current activity item content.
-			 *
-			 * @since 1.2.0
-			 *
-			 * @param array $item Array index holding current activity item content.
-			 */
-			$content = apply_filters_ref_array( 'bp_get_activity_content_body', array( $item['content'] ) );
+			/** This filter is documented in bp-activity/bp-activity-template.php */
+			$content = apply_filters_ref_array( 'bp_get_activity_content_body', array( $item['content'], &$activity ) );
 		} else {
 			/**
 			 * Filters current activity item action.
@@ -711,8 +706,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 
 			// If the activity has comments, display a link to the activity's permalink, with its comment count in a speech bubble.
 			if ( $comment_count ) {
-				$title_attr = sprintf( _n( '%s related activity', '%s related activities', $comment_count, 'buddypress' ), number_format_i18n( $comment_count ) );
-				printf( '<a href="%1$s" title="%2$s" class="post-com-count post-com-count-approved"><span class="comment-count comment-count-approved">%3$s</span></a>', esc_url( $root_activity_url ), esc_attr( $title_attr ), number_format_i18n( $comment_count ) );
+				printf( '<a href="%1$s" class="post-com-count post-com-count-approved"><span class="comment-count comment-count-approved">%2$s</span></a>', esc_url( $root_activity_url ), number_format_i18n( $comment_count ) );
 			}
 
 		// For non-root activities, display a link to the replied-to activity's author's profile.
@@ -812,6 +806,7 @@ class BP_Activity_List_Table extends WP_List_Table {
 				$parent_activity = (object) $item;
 			} elseif ( 'activity_comment' === $item['type'] ) {
 				$parent_activity = new BP_Activity_Activity( $item['item_id'] );
+				$can_comment     = bp_activity_can_comment_reply( (object) $item );
 			}
 
 			if ( isset( $parent_activity->type ) && bp_activity_post_type_get_tracking_arg( $parent_activity->type, 'post_type' ) ) {

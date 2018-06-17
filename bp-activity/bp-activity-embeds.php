@@ -19,9 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * @since 2.6.0
  */
 function bp_activity_setup_oembed() {
-	if ( version_compare( $GLOBALS['wp_version'], '4.5', '>=' ) && bp_is_active( 'activity', 'embeds' ) ) {
-		buddypress()->activity->oembed = new BP_Activity_oEmbed_Extension;
-	}
+	buddypress()->activity->oembed = new BP_Activity_oEmbed_Extension;
 }
 add_action( 'bp_loaded', 'bp_activity_setup_oembed' );
 
@@ -123,7 +121,7 @@ function bp_activity_embed_has_activity( $activity_id = 0 ) {
  * @since 2.6.0
  */
 function bp_activity_embed_excerpt( $content = '' ) {
-	echo bp_activity_get_embed_excerpt( $content = '' );
+	echo bp_activity_get_embed_excerpt( $content );
 }
 
 	/**

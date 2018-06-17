@@ -670,7 +670,10 @@ function bp_core_no_access( $args = '' ) {
 		// Error message is displayed with bp_core_no_access_wp_login_error().
 		case 2 :
 			if ( !empty( $redirect ) ) {
-				bp_core_redirect( add_query_arg( array( 'action' => 'bpnoaccess' ), wp_login_url( $redirect ) ) );
+				bp_core_redirect( add_query_arg( array(
+					'bp-auth' => 1,
+					'action'  => 'bpnoaccess'
+				), wp_login_url( $redirect ) ) );
 			} else {
 				bp_core_redirect( $root );
 			}
@@ -696,6 +699,35 @@ function bp_core_no_access( $args = '' ) {
 			break;
 	}
 }
+
+/**
+ * Login redirector.
+ *
+ * If a link is not publicly available, we can send members from external
+ * locations, like following links in an email, through the login screen.
+ *
+ * If a user clicks on this link and is already logged in, we should attempt
+ * to redirect the user to the authorized content instead of forcing the user
+ * to re-authenticate.
+ *
+ * @since 2.9.0
+ */
+function bp_login_redirector() {
+	// Redirect links must include the `redirect_to` and `bp-auth` parameters.
+	if ( empty( $_GET['redirect_to'] ) || empty( $_GET['bp-auth'] ) ) {
+		return;
+	}
+
+	/*
+	 * If the user is already logged in,
+	 * skip the login form and redirect them to the content.
+	 */
+	if ( bp_loggedin_user_id() ) {
+		wp_safe_redirect( esc_url_raw( $_GET['redirect_to'] ) );
+		exit;
+	}
+}
+add_action( 'login_init', 'bp_login_redirector', 1 );
 
 /**
  * Add a custom BuddyPress no access error message to wp-login.php.
@@ -852,11 +884,14 @@ function bp_get_canonical_url( $args = array() ) {
 	if ( 'page' == get_option( 'show_on_front' ) && $page_on_front = (int) get_option( 'page_on_front' ) ) {
 		$front_page_component = array_search( $page_on_front, bp_core_get_directory_page_ids() );
 
-		// If requesting the front page component directory, canonical
-		// URL is the front page. We detect whether we're detecting a
-		// component *directory* by checking that bp_current_action()
-		// is empty - ie, this not a single item or a feed.
-		if ( false !== $front_page_component && bp_is_current_component( $front_page_component ) && ! bp_current_action() ) {
+		/*
+		 * If requesting the front page component directory, canonical
+		 * URL is the front page. We detect whether we're detecting a
+		 * component *directory* by checking that bp_current_action()
+		 * is empty - ie, this not a single item, a feed, or an item
+		 * type directory.
+		 */
+		if ( false !== $front_page_component && bp_is_current_component( $front_page_component ) && ! bp_current_action() && ! bp_get_current_member_type() ) {
 			$bp->canonical_stack['canonical_url'] = trailingslashit( bp_get_root_domain() );
 
 		// Except when the front page is set to the registration page
@@ -993,7 +1028,7 @@ add_action( 'bp_init', '_bp_maybe_remove_redirect_canonical' );
  * @link https://buddypress.trac.wordpress.org/ticket/4415
  */
 function _bp_rehook_maybe_redirect_404() {
-	if ( defined( 'NOBLOGREDIRECT' ) ) {
+	if ( defined( 'NOBLOGREDIRECT' ) && is_multisite() ) {
 		remove_action( 'template_redirect', 'maybe_redirect_404' );
 		add_action( 'template_redirect', 'maybe_redirect_404', 100 );
 	}

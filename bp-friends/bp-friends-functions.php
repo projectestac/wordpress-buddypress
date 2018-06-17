@@ -44,8 +44,8 @@ function friends_add_friend( $initiator_userid, $friend_userid, $force_accept = 
 
 	// Setup the friendship data.
 	$friendship = new BP_Friends_Friendship;
-	$friendship->initiator_user_id = $initiator_userid;
-	$friendship->friend_user_id    = $friend_userid;
+	$friendship->initiator_user_id = (int) $initiator_userid;
+	$friendship->friend_user_id    = (int) $friend_userid;
 	$friendship->is_confirmed      = 0;
 	$friendship->is_limited        = 0;
 	$friendship->date_created      = bp_core_current_time();
@@ -348,7 +348,7 @@ function friends_check_user_has_friends( $user_id ) {
  *
  * @param int $initiator_user_id ID of the first user.
  * @param int $friend_user_id    ID of the second user.
- * @return int|bool ID of the friendship if found, otherwise false.
+ * @return int|null ID of the friendship if found, otherwise false.
  */
 function friends_get_friendship_id( $initiator_user_id, $friend_user_id ) {
 	return BP_Friends_Friendship::get_friendship_id( $initiator_user_id, $friend_user_id );
@@ -421,18 +421,25 @@ function friends_get_friendship_request_user_ids( $user_id ) {
  * @return array See {@link BP_Core_User::get_users()}.
  */
 function friends_get_recently_active( $user_id, $per_page = 0, $page = 0, $filter = '' ) {
+	$friends = bp_core_get_users( array(
+		'type'         => 'active',
+		'per_page'     => $per_page,
+		'page'         => $page,
+		'user_id'      => $user_id,
+		'search_terms' => $filter,
+	) );
 
 	/**
 	 * Filters a user's most recently active friends.
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param array {
+	 * @param array $friends {
 	 *     @type int   $total_users Total number of users matched by query params.
 	 *     @type array $paged_users The current page of users matched by query params.
 	 * }
 	 */
-	return apply_filters( 'friends_get_recently_active', BP_Core_User::get_users( 'active', $per_page, $page, $user_id, $filter ) );
+	return apply_filters( 'friends_get_recently_active', $friends );
 }
 
 /**
@@ -452,18 +459,25 @@ function friends_get_recently_active( $user_id, $per_page = 0, $page = 0, $filte
  * @return array See {@link BP_Core_User::get_users()}.
  */
 function friends_get_alphabetically( $user_id, $per_page = 0, $page = 0, $filter = '' ) {
+	$friends = bp_core_get_users( array(
+		'type'         => 'alphabetical',
+		'per_page'     => $per_page,
+		'page'         => $page,
+		'user_id'      => $user_id,
+		'search_terms' => $filter,
+	) );
 
 	/**
 	 * Filters a user's friends listed in alphabetical order.
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return array {
+	 * @return array $friends {
 	 *     @type int   $total_users Total number of users matched by query params.
 	 *     @type array $paged_users The current page of users matched by query params.
 	 * }
 	 */
-	return apply_filters( 'friends_get_alphabetically', BP_Core_User::get_users( 'alphabetical', $per_page, $page, $user_id, $filter ) );
+	return apply_filters( 'friends_get_alphabetically', $friends );
 }
 
 /**
@@ -483,18 +497,25 @@ function friends_get_alphabetically( $user_id, $per_page = 0, $page = 0, $filter
  * @return array See {@link BP_Core_User::get_users()}.
  */
 function friends_get_newest( $user_id, $per_page = 0, $page = 0, $filter = '' ) {
+	$friends = bp_core_get_users( array(
+		'type'         => 'newest',
+		'per_page'     => $per_page,
+		'page'         => $page,
+		'user_id'      => $user_id,
+		'search_terms' => $filter,
+	) );
 
 	/**
 	 * Filters a user's friends listed from newest to oldest.
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param array {
+	 * @param array $friends {
 	 *     @type int   $total_users Total number of users matched by query params.
 	 *     @type array $paged_users The current page of users matched by query params.
 	 * }
 	 */
-	return apply_filters( 'friends_get_newest', BP_Core_User::get_users( 'newest', $per_page, $page, $user_id, $filter ) );
+	return apply_filters( 'friends_get_newest', $friends );
 }
 
 /**
@@ -752,6 +773,12 @@ add_action( 'bp_make_spam_user', 'friends_remove_data' );
  * @see bp_activity_mentions_script()
  */
 function bp_friends_prime_mentions_results() {
+
+	// Stop here if user is not logged in.
+	if ( ! is_user_logged_in() ) {
+		return;
+	}
+
 	if ( ! bp_activity_maybe_load_mentions_scripts() ) {
 		return;
 	}
@@ -761,7 +788,7 @@ function bp_friends_prime_mentions_results() {
 		return;
 	}
 
-	if ( friends_get_total_friend_count( get_current_user_id() ) > 150 ) {
+	if ( friends_get_total_friend_count( get_current_user_id() ) > 30 ) {
 		return;
 	}
 

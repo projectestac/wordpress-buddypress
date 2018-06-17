@@ -16,10 +16,6 @@ defined( 'ABSPATH' ) || exit;
 // Include WP's list table class.
 if ( !class_exists( 'WP_List_Table' ) ) require( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 
-if ( ! buddypress()->do_autoload ) {
-	require dirname( __FILE__ ) . '/classes/class-bp-activity-list-table.php';
-}
-
 // Per_page screen option. Has to be hooked in extremely early.
 if ( is_admin() && ! empty( $_REQUEST['page'] ) && 'bp-activity' == $_REQUEST['page'] )
 	add_filter( 'set-screen-option', 'bp_activity_admin_screen_options', 10, 3 );
@@ -98,7 +94,7 @@ function bp_activity_admin_reply() {
 
 	// @todo: Check if user is allowed to create new activity items
 	// if ( ! current_user_can( 'bp_new_activity' ) )
-	if ( ! current_user_can( 'bp_moderate' ) )
+	if ( ! bp_current_user_can( 'bp_moderate' ) )
 		die( '-1' );
 
 	// Add new activity comment.
@@ -145,7 +141,7 @@ add_action( 'wp_ajax_bp-activity-admin-reply', 'bp_activity_admin_reply' );
  * @param string $value     Will always be false unless another plugin filters it first.
  * @param string $option    Screen option name.
  * @param string $new_value Screen option form value.
- * @return string Option value. False to abandon update.
+ * @return string|int Option value. False to abandon update.
  */
 function bp_activity_admin_screen_options( $value, $option, $new_value ) {
 	if ( 'toplevel_page_bp_activity_per_page' != $option && 'toplevel_page_bp_activity_network_per_page' != $option )
@@ -169,8 +165,9 @@ function bp_activity_admin_screen_options( $value, $option, $new_value ) {
  * @return array Hidden Meta Boxes.
  */
 function bp_activity_admin_edit_hidden_metaboxes( $hidden, $screen ) {
-	if ( empty( $screen->id ) || 'toplevel_page_bp-activity' != $screen->id && 'toplevel_page_bp-activity_network' != $screen->id )
+	if ( empty( $screen->id ) || 'toplevel_page_bp-activity' !== $screen->id && 'toplevel_page_bp-activity-network' !== $screen->id ) {
 		return $hidden;
+	}
 
 	// Hide the primary link meta box by default.
 	$hidden  = array_merge( (array) $hidden, array( 'bp_activity_itemids', 'bp_activity_link', 'bp_activity_type', 'bp_activity_userid', ) );
@@ -235,7 +232,7 @@ function bp_activity_admin_load() {
 			'title'   => __( 'Item, Link, Type', 'buddypress' ),
 			'content' =>
 				'<p>' . __( '<strong>Primary Item/Secondary Item</strong> - These identify the object that created the activity. For example, the fields could reference a comment left on a specific site. Some types of activity may only use one, or none, of these fields.', 'buddypress' ) . '</p>' .
-				'<p>' . __( '<strong>Link</strong> - Used by some types of activity (e.g blog posts and comments, and forum topics and replies) to store a link back to the original content.', 'buddypress' ) . '</p>' .
+				'<p>' . __( '<strong>Link</strong> - Used by some types of activity (blog posts and comments) to store a link back to the original content.', 'buddypress' ) . '</p>' .
 				'<p>' . __( '<strong>Type</strong> - Each distinct kind of activity has its own type. For example, <code>created_group</code> is used when a group is created and <code>joined_group</code> is used when a user joins a group.', 'buddypress' ) . '</p>' .
 				'<p>' . __( 'For information about when and how BuddyPress uses all of these settings, see the Managing Activity link in the panel to the side.', 'buddypress' ) . '</p>'
 		) );
@@ -299,12 +296,11 @@ function bp_activity_admin_load() {
 		);
 
 		// Add accessible hidden heading and text for Activity screen pagination.
-		if ( bp_get_major_wp_version() >= 4.4 ) {
-			get_current_screen()->set_screen_reader_content( array(
-				/* translators: accessibility text */
-				'heading_pagination' => __( 'Activity list navigation', 'buddypress' ),
-			) );
-		}
+		get_current_screen()->set_screen_reader_content( array(
+			/* translators: accessibility text */
+			'heading_pagination' => __( 'Activity list navigation', 'buddypress' ),
+		) );
+
 	}
 
 	// Enqueue CSS and JavaScript.
@@ -393,8 +389,8 @@ function bp_activity_admin_load() {
 					 * Remove moderation and blacklist checks in case we want to ham an activity
 					 * which contains one of these listed keys.
 					 */
-					remove_action( 'bp_activity_before_save', 'bp_activity_check_moderation_keys', 2, 1 );
-					remove_action( 'bp_activity_before_save', 'bp_activity_check_blacklist_keys',  2, 1 );
+					remove_action( 'bp_activity_before_save', 'bp_activity_check_moderation_keys', 2 );
+					remove_action( 'bp_activity_before_save', 'bp_activity_check_blacklist_keys', 2 );
 
 					bp_activity_mark_as_ham( $activity );
 					$result = $activity->save();
@@ -803,7 +799,7 @@ function bp_activity_admin_edit_metabox_link( $item ) {
 		_e( 'Link', 'buddypress' );
 	?></label>
 	<input type="url" name="bp-activities-link" id="bp-activities-link" value="<?php echo esc_url( $item->primary_link ); ?>" aria-describedby="bp-activities-link-description" />
-	<p id="bp-activities-link-description"><?php _e( 'Activity generated by posts and comments, forum topics and replies, and some plugins, uses the link field for a permalink back to the content item.', 'buddypress' ); ?></p>
+	<p id="bp-activities-link-description"><?php _e( 'Activity generated by posts and comments uses the link field for a permalink back to the content item.', 'buddypress' ); ?></p>
 
 <?php
 }

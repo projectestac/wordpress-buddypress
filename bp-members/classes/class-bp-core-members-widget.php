@@ -126,11 +126,11 @@ class BP_Core_Members_Widget extends WP_Widget {
 
 					<li class="vcard">
 						<div class="item-avatar">
-							<a href="<?php bp_member_permalink() ?>" title="<?php bp_member_name(); ?>"><?php bp_member_avatar(); ?></a>
+							<a href="<?php bp_member_permalink() ?>" class="bp-tooltip" data-bp-tooltip="<?php bp_member_name(); ?>"><?php bp_member_avatar(); ?></a>
 						</div>
 
 						<div class="item">
-							<div class="item-title fn"><a href="<?php bp_member_permalink(); ?>" title="<?php bp_member_name(); ?>"><?php bp_member_name(); ?></a></div>
+							<div class="item-title fn"><a href="<?php bp_member_permalink(); ?>"><?php bp_member_name(); ?></a></div>
 							<div class="item-meta">
 								<?php if ( 'newest' == $settings['member_default'] ) : ?>
 									<span class="activity" data-livestamp="<?php bp_core_iso8601_date( bp_get_member_registered( array( 'relative' => false ) ) ); ?>"><?php bp_member_registered(); ?></span>

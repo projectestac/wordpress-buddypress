@@ -157,7 +157,7 @@ class BP_Core_User {
 
 			$this->user_url  = bp_core_get_user_domain( $this->id, $this->profile_data['user_nicename'], $this->profile_data['user_login'] );
 			$this->fullname  = esc_attr( $this->profile_data[$full_name_field_name]['field_data'] );
-			$this->user_link = "<a href='{$this->user_url}' title='{$this->fullname}'>{$this->fullname}</a>";
+			$this->user_link = "<a href='{$this->user_url}'>{$this->fullname}</a>";
 			$this->email     = esc_attr( $this->profile_data['user_email'] );
 		} else {
 			$this->user_url  = bp_core_get_user_domain( $this->id );
@@ -165,11 +165,6 @@ class BP_Core_User {
 			$this->fullname  = esc_attr( bp_core_get_user_displayname( $this->id ) );
 			$this->email     = esc_attr( bp_core_get_user_email( $this->id ) );
 		}
-
-		// Cache a few things that are fetched often.
-		wp_cache_set( 'bp_user_fullname_' . $this->id, $this->fullname, 'bp' );
-		wp_cache_set( 'bp_user_email_' . $this->id, $this->email, 'bp' );
-		wp_cache_set( 'bp_user_url_' . $this->id, $this->user_url, 'bp' );
 
 		$this->avatar       = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'full', 'alt' => sprintf( __( 'Profile photo of %s', 'buddypress' ), $this->fullname ) ) );
 		$this->avatar_thumb = bp_core_fetch_avatar( array( 'item_id' => $this->id, 'type' => 'thumb', 'alt' => sprintf( __( 'Profile photo of %s', 'buddypress' ), $this->fullname ) ) );
@@ -230,7 +225,7 @@ class BP_Core_User {
 	 *                                     Default: false.
 	 * @param string|bool $meta_value      See {@link BP_User_Query}.
 	 *                                     Default: false.
-	 * @return array {
+	 * @return false|array {
 	 *     @type int   $total_users Total number of users matched by query
 	 *                              params.
 	 *     @type array $paged_users The current page of users matched by
@@ -439,7 +434,7 @@ class BP_Core_User {
 	 * @param bool     $populate_extras If we should populate extra user fields.
 	 * @param string   $exclude         Comma-separated IDs of users whose results
 	 *                                  aren't to be fetched.
-	 * @return mixed False on error, otherwise associative array of results.
+	 * @return false|array False on error, otherwise associative array of results.
 	 */
 	public static function get_users_by_letter( $letter, $limit = null, $page = 1, $populate_extras = true, $exclude = '' ) {
 		global $wpdb;
@@ -723,16 +718,6 @@ class BP_Core_User {
 			}
 		}
 
-		if ( 'active' != $type ) {
-			$user_activity = $wpdb->get_results( $wpdb->prepare( "SELECT user_id as id, meta_value as last_activity FROM {$wpdb->usermeta} WHERE meta_key = %s AND user_id IN ( {$user_ids} )", bp_get_user_meta_key( 'last_activity' ) ) );
-			for ( $i = 0, $count = count( $paged_users ); $i < $count; ++$i ) {
-				foreach ( (array) $user_activity as $activity ) {
-					if ( $activity->id == $paged_users[$i]->id )
-						$paged_users[$i]->last_activity = $activity->last_activity;
-				}
-			}
-		}
-
 		// Fetch the user's last_activity.
 		if ( 'active' != $type ) {
 			$user_activity = $wpdb->get_results( $wpdb->prepare( "SELECT user_id as id, meta_value as last_activity FROM {$wpdb->usermeta} WHERE meta_key = %s AND user_id IN ( {$user_ids} )", bp_get_user_meta_key( 'last_activity' ) ) );
@@ -759,25 +744,20 @@ class BP_Core_User {
 	/**
 	 * Get WordPress user details for a specified user.
 	 *
-	 * @global wpdb $wpdb WordPress database object.
+	 * @since 3.0.0 Results might be from cache
 	 *
 	 * @param int $user_id User ID.
-	 * @return array Associative array.
+	 * @return false|object WP_User if successful, false on failure.
 	 */
 	public static function get_core_userdata( $user_id ) {
-		global $wpdb;
-
-		if ( !$user = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->users} WHERE ID = %d LIMIT 1", $user_id ) ) )
-			return false;
-
-		return $user;
+		return WP_User::get_data_by( 'id', $user_id );
 	}
 
 	/**
 	 * Get last activity data for a user or set of users.
 	 *
 	 * @param int|array $user_id User IDs or multiple user IDs.
-	 * @return array
+	 * @return false|array
 	 */
 	public static function get_last_activity( $user_id ) {
 		global $wpdb;

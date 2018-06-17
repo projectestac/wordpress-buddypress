@@ -88,17 +88,16 @@ class BP_Groups_Invite_Template {
 				1  => 'group_id',
 			);
 
-			$func_args = func_get_args();
-			$args      = bp_core_parse_args_array( $old_args_keys, $func_args );
+			$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 		}
 
-		$r = wp_parse_args( $args, array(
+		$r = bp_parse_args( $args, array(
 			'page'     => 1,
 			'per_page' => 10,
 			'page_arg' => 'invitepage',
 			'user_id'  => bp_loggedin_user_id(),
 			'group_id' => bp_get_current_group_id(),
-		) );
+		), 'groups_invite_template' );
 
 		$this->pag_arg  = sanitize_key( $r['page_arg'] );
 		$this->pag_page = bp_sanitize_pagination_arg( $this->pag_arg, $r['page']     );
@@ -237,7 +236,7 @@ class BP_Groups_Invite_Template {
 		$this->invite->user->avatar_mini  = bp_core_fetch_avatar( array( 'item_id' => $user_id, 'type' => 'thumb', 'alt' => sprintf( __( 'Profile photo of %s', 'buddypress' ), $this->invite->user->fullname ), 'width' => 30, 'height' => 30 ) );
 		$this->invite->user->email        = $this->invite->user->user_email;
 		$this->invite->user->user_url     = bp_core_get_user_domain( $user_id, $this->invite->user->user_nicename, $this->invite->user->user_login );
-		$this->invite->user->user_link    = "<a href='{$this->invite->user->user_url}' title='{$this->invite->user->fullname}'>{$this->invite->user->fullname}</a>";
+		$this->invite->user->user_link    = "<a href='{$this->invite->user->user_url}'>{$this->invite->user->fullname}</a>";
 		$this->invite->user->last_active  = bp_core_get_last_activity( $this->invite->user->last_activity, __( 'active %s', 'buddypress' ) );
 
 		if ( bp_is_active( 'groups' ) ) {

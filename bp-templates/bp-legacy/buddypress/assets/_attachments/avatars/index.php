@@ -11,6 +11,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-attachments
+ * @version 3.0.0
  */
 
 /**
@@ -44,4 +45,4 @@ do_action( 'bp_attachments_avatar_check_template' );
 	<# } #>
 </script>
 
-<?php do_action( 'bp_attachments_avatar_main_template' ); ?>
+<?php do_action( 'bp_attachments_avatar_main_template' );

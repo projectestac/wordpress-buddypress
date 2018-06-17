@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -38,4 +39,4 @@ do_action( 'bp_after_group_delete_admin' ); ?>
 	<input type="submit" disabled="disabled" value="<?php esc_attr_e( 'Delete Group', 'buddypress' ); ?>" id="delete-group-button" name="delete-group-button" />
 </div>
 
-<?php wp_nonce_field( 'groups_delete_group' ); ?>
+<?php wp_nonce_field( 'groups_delete_group' );

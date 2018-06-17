@@ -36,7 +36,8 @@ defined( 'ABSPATH' ) || exit;
  *     @type string $date_sent  Date sent, in 'Y-m-d H:i:s' format. Default: current date/time.
  *     @type string $error_type Optional. Error type. Either 'bool' or 'wp_error'. Default: 'bool'.
  * }
- * @return int|bool ID of the message thread on success, false on failure.
+ *
+ * @return int|bool|WP_Error ID of the message thread on success, false on failure.
  */
 function messages_new_message( $args = '' ) {
 
@@ -56,10 +57,10 @@ function messages_new_message( $args = '' ) {
 		if ( 'wp_error' === $r['error_type'] ) {
 			if ( empty( $r['sender_id'] ) ) {
 				$error_code = 'messages_empty_sender';
-				$feedback = __( 'Your message was not sent. Please use a valid sender.', 'buddypress' );
+				$feedback   = __( 'Your message was not sent. Please use a valid sender.', 'buddypress' );
 			} else {
 				$error_code = 'messages_empty_content';
-				$feedback = __( 'Your message was not sent. Please enter some content.', 'buddypress' );
+				$feedback   = __( 'Your message was not sent. Please enter some content.', 'buddypress' );
 			}
 
 			return new WP_Error( $error_code, $feedback );
@@ -113,13 +114,13 @@ function messages_new_message( $args = '' ) {
 		}
 
 		// Setup the recipients array.
-		$recipient_ids 	    = array();
+		$recipient_ids = array();
 
 		// Invalid recipients are added to an array, for future enhancements.
 		$invalid_recipients = array();
 
 		// Loop the recipients and convert all usernames to user_ids where needed.
-		foreach( (array) $r['recipients'] as $recipient ) {
+		foreach ( (array) $r['recipients'] as $recipient ) {
 
 			// Trim spaces and skip if empty.
 			$recipient = trim( $recipient );
@@ -168,9 +169,9 @@ function messages_new_message( $args = '' ) {
 		}
 
 		// Format this to match existing recipients.
-		foreach( (array) $recipient_ids as $i => $recipient_id ) {
-			$message->recipients[$i]          = new stdClass;
-			$message->recipients[$i]->user_id = $recipient_id;
+		foreach ( (array) $recipient_ids as $i => $recipient_id ) {
+			$message->recipients[ $i ]          = new stdClass;
+			$message->recipients[ $i ]->user_id = $recipient_id;
 		}
 	}
 
@@ -253,7 +254,10 @@ function messages_send_notice( $subject, $message ) {
 function messages_delete_thread( $thread_ids, $user_id = 0 ) {
 
 	if ( empty( $user_id ) ) {
-		$user_id = bp_loggedin_user_id();
+		$user_id =
+			bp_displayed_user_id() ?
+			bp_displayed_user_id() :
+			bp_loggedin_user_id();
 	}
 
 	/**
@@ -311,10 +315,6 @@ function messages_delete_thread( $thread_ids, $user_id = 0 ) {
  * @return int|null Message ID if the user has access, otherwise null.
  */
 function messages_check_thread_access( $thread_id, $user_id = 0 ) {
-	if ( empty( $user_id ) ) {
-		$user_id = bp_loggedin_user_id();
-	}
-
 	return BP_Messages_Thread::check_access( $thread_id, $user_id );
 }
 
@@ -324,6 +324,8 @@ function messages_check_thread_access( $thread_id, $user_id = 0 ) {
  * Wrapper for {@link BP_Messages_Thread::mark_as_read()}.
  *
  * @param int $thread_id ID of the thread.
+ *
+ * @return false|int Number of threads marked as read or false on error.
  */
 function messages_mark_thread_read( $thread_id ) {
 	return BP_Messages_Thread::mark_as_read( $thread_id );
@@ -335,6 +337,8 @@ function messages_mark_thread_read( $thread_id ) {
  * Wrapper for {@link BP_Messages_Thread::mark_as_unread()}.
  *
  * @param int $thread_id ID of the thread.
+ *
+ * @return false|int Number of threads marked as unread or false on error.
  */
 function messages_mark_thread_unread( $thread_id ) {
 	return BP_Messages_Thread::mark_as_unread( $thread_id );
@@ -375,10 +379,6 @@ function messages_remove_callback_values() {
  * @return int
  */
 function messages_get_unread_count( $user_id = 0 ) {
-	if ( empty( $user_id ) ) {
-		$user_id = bp_loggedin_user_id();
-	}
-
 	return BP_Messages_Thread::get_inbox_count( $user_id );
 }
 
@@ -408,7 +408,7 @@ function messages_get_message_sender( $message_id ) {
  * Check whether a message thread exists.
  *
  * @param int $thread_id ID of the thread.
- * @return int|null The message thread ID on success, null on failure.
+ * @return false|int|null The message thread ID on success, null on failure.
  */
 function messages_is_valid_thread( $thread_id ) {
 	return BP_Messages_Thread::is_valid( $thread_id );
@@ -445,7 +445,8 @@ function messages_get_message_thread_id( $message_id = 0 ) {
  * @param string|bool $meta_key   Meta key to delete. Default false.
  * @param string|bool $meta_value Meta value to delete. Default false.
  * @param bool        $delete_all Whether or not to delete all meta data.
- * @return bool
+ *
+ * @return bool True on successful delete, false on failure.
  */
 function bp_messages_delete_meta( $message_id, $meta_key = false, $meta_value = false, $delete_all = false ) {
 	// Legacy - if no meta_key is passed, delete all for the item.
@@ -460,9 +461,11 @@ function bp_messages_delete_meta( $message_id, $meta_key = false, $meta_value = 
 		$keys = array( $meta_key );
 	}
 
+	$retval = false;
+
 	// No keys, so stop now!
 	if ( empty( $keys ) ) {
-		return false;
+		return $retval;
 	}
 
 	add_filter( 'query', 'bp_filter_metaid_column_name' );
@@ -595,7 +598,7 @@ function messages_notification_new_message( $raw_args = array() ) {
 			'notification_type' => 'messages-unread',
 		);
 
-		$args = array(
+		bp_send_email( 'messages-unread', $ud, array(
 			'tokens' => array(
 				'usermessage' => wp_strip_all_tags( stripslashes( $message ) ),
 				'message.url' => esc_url( bp_core_get_user_domain( $recipient->user_id ) . bp_get_messages_slug() . '/view/' . $thread_id . '/' ),
@@ -603,8 +606,7 @@ function messages_notification_new_message( $raw_args = array() ) {
 				'usersubject' => sanitize_text_field( stripslashes( $subject ) ),
 				'unsubscribe' => esc_url( bp_email_get_unsubscribe_link( $unsubscribe_args ) ),
 			),
-		);
-		bp_send_email( 'messages-unread', $ud, $args );
+		) );
 	}
 
 	/**

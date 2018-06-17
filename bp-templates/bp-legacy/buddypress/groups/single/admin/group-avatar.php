@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -64,4 +65,4 @@
 
 	<?php wp_nonce_field( 'bp_avatar_cropstore' ); ?>
 
-<?php endif; ?>
+<?php endif;

@@ -16,10 +16,6 @@ defined( 'ABSPATH' ) || exit;
 // Include WP's list table class.
 if ( !class_exists( 'WP_List_Table' ) ) require( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 
-if ( ! buddypress()->do_autoload ) {
-	require dirname( __FILE__ ) . '/classes/class-bp-groups-list-table.php';
-}
-
 // The per_page screen option. Has to be hooked in extremely early.
 if ( is_admin() && ! empty( $_REQUEST['page'] ) && 'bp-groups' == $_REQUEST['page'] )
 	add_filter( 'set-screen-option', 'bp_groups_admin_screen_options', 10, 3 );
@@ -190,12 +186,10 @@ function bp_groups_admin_load() {
 		);
 
 		// Add accessible hidden heading and text for Groups screen pagination.
-		if ( bp_get_major_wp_version() >= 4.4 ) {
-			get_current_screen()->set_screen_reader_content( array(
-				/* translators: accessibility text */
-				'heading_pagination' => __( 'Groups list navigation', 'buddypress' ),
-			) );
-		}
+		get_current_screen()->set_screen_reader_content( array(
+			/* translators: accessibility text */
+			'heading_pagination' => __( 'Groups list navigation', 'buddypress' ),
+		) );
 	}
 
 	$bp = buddypress();
@@ -240,19 +234,29 @@ function bp_groups_admin_load() {
 		$error = 0;
 		$success_new = $error_new = $success_modified = $error_modified = array();
 
-		// Group name and description are handled with
-		// groups_edit_base_group_details().
-		if ( !groups_edit_base_group_details( $group_id, $_POST['bp-groups-name'], $_POST['bp-groups-description'], 0 ) ) {
-			$error = $group_id;
+		// Name, description and slug must not be empty.
+		if ( empty( $_POST['bp-groups-name'] ) ) {
+			$error = $error - 1;
+		}
+		if ( empty( $_POST['bp-groups-description'] ) ) {
+			$error = $error - 2;
+		}
+		if ( empty( $_POST['bp-groups-slug'] ) ) {
+			$error = $error - 4;
+		}
 
-			// Using negative integers for different error messages... eek!
-			if ( empty( $_POST['bp-groups-name'] ) && empty( $_POST['bp-groups-description'] ) ) {
-				$error = -3;
-			} elseif ( empty( $_POST['bp-groups-name'] ) ) {
-				$error = -1;
-			} elseif ( empty( $_POST['bp-groups-description'] ) ) {
-				$error = -2;
-			}
+		/*
+		 * Group name, slug, and description are handled with
+		 * groups_edit_base_group_details().
+		 */
+		if ( ! $error && ! groups_edit_base_group_details( array(
+				'group_id'       => $group_id,
+				'name'           => $_POST['bp-groups-name'],
+				'slug'           => $_POST['bp-groups-slug'],
+				'description'    => $_POST['bp-groups-description'],
+				'notify_members' => false,
+			) ) ) {
+			$error = $group_id;
 		}
 
 		// Enable discussion forum.
@@ -458,7 +462,7 @@ function bp_groups_admin_load() {
  * @param string $value     Will always be false unless another plugin filters it first.
  * @param string $option    Screen option name.
  * @param string $new_value Screen option form value.
- * @return string Option value. False to abandon update.
+ * @return string|int Option value. False to abandon update.
  */
 function bp_groups_admin_screen_options( $value, $option, $new_value ) {
 	if ( 'toplevel_page_bp_groups_per_page' != $option && 'toplevel_page_bp_groups_network_per_page' != $option )
@@ -502,7 +506,7 @@ function bp_groups_admin() {
  */
 function bp_groups_admin_edit() {
 
-	if ( ! current_user_can( 'bp_moderate' ) )
+	if ( ! bp_current_user_can( 'bp_moderate' ) )
 		die( '-1' );
 
 	$messages = array();
@@ -522,22 +526,10 @@ function bp_groups_admin_edit() {
 		}
 
 		if ( ! empty( $errors ) ) {
-			switch ( $errors ) {
-				case -1 :
-					$messages[] = __( 'Group name cannot be empty.', 'buddypress' );
-					break;
-
-				case -2 :
-					$messages[] = __( 'Group description cannot be empty.', 'buddypress' );
-					break;
-
-				case -3 :
-					$messages[] = __( 'Group name and description cannot be empty.', 'buddypress' );
-					break;
-
-				default :
-					$messages[] = __( 'An error occurred when trying to update your group details.', 'buddypress' );
-					break;
+			if ( $errors < 0 ) {
+				$messages[] = __( 'Group name, slug, and description are all required fields.', 'buddypress' );
+			} else {
+				$messages[] = __( 'An error occurred when trying to update your group details.', 'buddypress' );
 			}
 
 		} elseif ( ! empty( $updated ) ) {
@@ -586,13 +578,27 @@ function bp_groups_admin_edit() {
 	do_action_ref_array( 'bp_groups_admin_edit', array( &$group ) ); ?>
 
 	<div class="wrap">
-		<h1><?php _e( 'Edit Group', 'buddypress' ); ?>
+		<?php if ( version_compare( $GLOBALS['wp_version'], '4.8', '>=' ) ) : ?>
+
+			<h1 class="wp-heading-inline"><?php _e( 'Edit Group', 'buddypress' ); ?></h1>
 
 			<?php if ( is_user_logged_in() && bp_user_can_create_groups() ) : ?>
-				<a class="add-new-h2" href="<?php echo trailingslashit( bp_get_groups_directory_permalink() . 'create' ); ?>"><?php _e( 'Add New', 'buddypress' ); ?></a>
+				<a class="page-title-action" href="<?php echo trailingslashit( bp_get_groups_directory_permalink() . 'create' ); ?>"><?php _e( 'Add New', 'buddypress' ); ?></a>
 			<?php endif; ?>
 
-		</h1>
+			<hr class="wp-header-end">
+
+		<?php else : ?>
+
+			<h1><?php _e( 'Edit Group', 'buddypress' ); ?>
+
+				<?php if ( is_user_logged_in() && bp_user_can_create_groups() ) : ?>
+					<a class="add-new-h2" href="<?php echo trailingslashit( bp_get_groups_directory_permalink() . 'create' ); ?>"><?php _e( 'Add New', 'buddypress' ); ?></a>
+				<?php endif; ?>
+
+			</h1>
+
+		<?php endif; ?>
 
 		<?php // If the user has just made a change to an group, display the status messages. ?>
 		<?php if ( !empty( $messages ) ) : ?>
@@ -616,7 +622,11 @@ function bp_groups_admin_edit() {
 										?></label>
 										<input type="text" name="bp-groups-name" id="bp-groups-name" value="<?php echo esc_attr( stripslashes( $group_name ) ) ?>" />
 										<div id="bp-groups-permalink-box">
-											<strong><?php esc_html_e( 'Permalink:', 'buddypress' ) ?></strong> <span id="sample-permalink"><?php bp_group_permalink( $group ) ?></span> <a href="<?php echo bp_group_permalink( $group ) ?>" class="button button-small" id="bp-groups-visit-group"><?php esc_html_e( 'Visit Group', 'buddypress' ) ?></a>
+											<strong><?php esc_html_e( 'Permalink:', 'buddypress' ) ?></strong>
+											<span id="bp-groups-permalink">
+												<?php bp_groups_directory_permalink(); ?> <input type="text" id="bp-groups-slug" name="bp-groups-slug" value="<?php bp_group_slug( $group ); ?>" autocomplete="off"> /
+											</span>
+											<a href="<?php echo bp_group_permalink( $group ) ?>" class="button button-small" id="bp-groups-visit-group"><?php esc_html_e( 'Visit Group', 'buddypress' ) ?></a>
 										</div>
 
 										<label for="bp-groups-description" class="screen-reader-text"><?php
@@ -754,6 +764,22 @@ function bp_groups_admin_index() {
 	do_action( 'bp_groups_admin_index', $messages ); ?>
 
 	<div class="wrap">
+		<?php if ( version_compare( $GLOBALS['wp_version'], '4.8', '>=' ) ) : ?>
+
+			<h1 class="wp-heading-inline"><?php _e( 'Groups', 'buddypress' ); ?></h1>
+
+			<?php if ( is_user_logged_in() && bp_user_can_create_groups() ) : ?>
+				<a class="page-title-action" href="<?php echo trailingslashit( bp_get_groups_directory_permalink() . 'create' ); ?>"><?php _e( 'Add New', 'buddypress' ); ?></a>
+			<?php endif; ?>
+
+			<?php if ( !empty( $_REQUEST['s'] ) ) : ?>
+				<span class="subtitle"><?php printf( __( 'Search results for &#8220;%s&#8221;', 'buddypress' ), wp_html_excerpt( esc_html( stripslashes( $_REQUEST['s'] ) ), 50 ) ); ?></span>
+			<?php endif; ?>
+
+			<hr class="wp-header-end">
+
+		<?php else : ?>
+
 		<h1>
 			<?php _e( 'Groups', 'buddypress' ); ?>
 
@@ -765,6 +791,8 @@ function bp_groups_admin_index() {
 				<span class="subtitle"><?php printf( __( 'Search results for &#8220;%s&#8221;', 'buddypress' ), wp_html_excerpt( esc_html( stripslashes( $_REQUEST['s'] ) ), 50 ) ); ?></span>
 			<?php endif; ?>
 		</h1>
+
+		<?php endif; ?>
 
 		<?php // If the user has just made a change to an group, display the status messages. ?>
 		<?php if ( !empty( $messages ) ) : ?>
@@ -794,7 +822,7 @@ function bp_groups_admin_index() {
  */
 function bp_groups_admin_edit_metabox_settings( $item ) {
 
-	$invite_status = groups_get_groupmeta( $item->id, 'invite_status' ); ?>
+	$invite_status = bp_group_get_invite_status( $item->id ); ?>
 
 	<?php if ( bp_is_active( 'forums' ) ) : ?>
 		<div class="bp-groups-settings-section" id="bp-groups-settings-section-forum">
@@ -839,7 +867,7 @@ function bp_groups_admin_edit_metabox_add_new_members( $item ) {
 		/* translators: accessibility text */
 		_e( 'Add new members', 'buddypress' );
 	?></label>
-	<input name="bp-groups-new-members" id="bp-groups-new-members" class="bp-suggest-user" placeholder="<?php esc_attr_e( 'Enter a comma-separated list of user logins.', 'buddypress' ) ?>" />
+	<input name="bp-groups-new-members" type="text" id="bp-groups-new-members" class="bp-suggest-user" placeholder="<?php esc_attr_e( 'Enter a comma-separated list of user logins.', 'buddypress' ) ?>" />
 	<ul id="bp-groups-new-members-list"></ul>
 	<?php
 }
@@ -877,7 +905,15 @@ function bp_groups_admin_edit_metabox_members( $item ) {
 			'group_id'   => $item->id,
 			'group_role' => array( $type ),
 			'type'       => 'alphabetical',
-			'per_page'   => 10,
+			/**
+			 * Filters the admin members type per page value.
+			 *
+			 * @since 2.8.0
+			 *
+			 * @param int    $value Member types per page. Default 10.
+			 * @param string $type  Member type.
+			 */
+			'per_page'   => apply_filters( 'bp_groups_admin_members_type_per_page', 10, $type ),
 			'page'       => $current_type_page,
 		) );
 
@@ -988,10 +1024,6 @@ function bp_groups_admin_edit_metabox_members( $item ) {
 				</tbody>
 			</table>
 
-			<div class="bp-group-admin-pagination table-bottom">
-				<?php echo $pagination[ $member_type ]; ?>
-			</div>
-
 		<?php else : ?>
 
 			<p class="bp-groups-no-members description"><?php esc_html_e( 'No members of this type', 'buddypress' ); ?></p>
@@ -1037,7 +1069,7 @@ function bp_groups_admin_edit_metabox_status( $item ) {
  *
  * @since 2.6.0
  *
- * @param BP_Groups_Group|null $user The BP_Groups_Group object corresponding to the group being edited.
+ * @param BP_Groups_Group|null $group The BP_Groups_Group object corresponding to the group being edited.
  */
 function bp_groups_admin_edit_metabox_group_type( BP_Groups_Group $group = null ) {
 
@@ -1063,7 +1095,7 @@ function bp_groups_admin_edit_metabox_group_type( BP_Groups_Group $group = null 
 					<?php
 						echo esc_html( $type->labels['singular_name'] );
 						if ( in_array( $type->name, $backend_only ) ) {
-							printf( ' <span class="description">%s</span>', esc_html__( '(Not available on the frontend)', 'buddypress' ) );
+							printf( ' <span class="description">%s</span>', esc_html__( '(Not available on the front end)', 'buddypress' ) );
 						}
 					?>
 
@@ -1083,6 +1115,8 @@ function bp_groups_admin_edit_metabox_group_type( BP_Groups_Group $group = null 
  * Process changes from the Group Type metabox.
  *
  * @since 2.6.0
+ *
+ * @param int $group_id Group ID.
  */
 function bp_groups_process_group_type_update( $group_id ) {
 	if ( ! isset( $_POST['bp-group-type-nonce'] ) ) {
@@ -1092,7 +1126,7 @@ function bp_groups_process_group_type_update( $group_id ) {
 	check_admin_referer( 'bp-group-type-change-' . $group_id, 'bp-group-type-nonce' );
 
 	// Permission check.
-	if ( ! current_user_can( 'bp_moderate' ) ) {
+	if ( ! bp_current_user_can( 'bp_moderate' ) ) {
 		return;
 	}
 
@@ -1131,11 +1165,19 @@ function bp_groups_admin_create_pagination_links( BP_Group_Member_Query $query, 
 	}
 
 	// The key used to paginate this member type in the $_GET global.
-	$qs_key = $member_type . '_page';
+	$qs_key   = $member_type . '_page';
 	$url_base = remove_query_arg( array( $qs_key, 'updated', 'success_modified' ), $_SERVER['REQUEST_URI'] );
 
-	$page     = isset( $_GET[ $qs_key ] ) ? absint( $_GET[ $qs_key ] ) : 1;
-	$per_page = 10; // @todo Make this customizable?
+	$page = isset( $_GET[ $qs_key ] ) ? absint( $_GET[ $qs_key ] ) : 1;
+
+	/**
+	 * Filters the number of members per member type that is displayed in group editing admin area.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param string $member_type Member type, which is a group role (admin, mod etc).
+	 */
+	$per_page = apply_filters( 'bp_groups_admin_members_type_per_page', 10, $member_type );
 
 	// Don't show anything if there's no pagination.
 	if ( 1 === $page && $query->total_users <= $per_page ) {
@@ -1158,7 +1200,7 @@ function bp_groups_admin_create_pagination_links( BP_Group_Member_Query $query, 
 		$viewing_text = __( 'Viewing 1 member', 'buddypress' );
 	} else {
 		$viewing_text = sprintf(
-			_n( 'Viewing %1$s - %2$s of %3$s member', 'Viewing %1$s - %2$s of %3$s members', $query->total_users, 'buddypress' ),
+			_nx( 'Viewing %1$s - %2$s of %3$s member', 'Viewing %1$s - %2$s of %3$s members', $query->total_users, 'Group members pagination in group admin', 'buddypress' ),
 			bp_core_number_format( $current_page_start ),
 			bp_core_number_format( $current_page_end ),
 			bp_core_number_format( $query->total_users )
@@ -1199,7 +1241,7 @@ function bp_groups_admin_get_usernames_from_ids( $user_ids = array() ) {
 function bp_groups_admin_autocomplete_handler() {
 
 	// Bail if user user shouldn't be here, or is a large network.
-	if ( ! current_user_can( 'bp_moderate' ) || ( is_multisite() && wp_is_large_network( 'users' ) ) ) {
+	if ( ! bp_current_user_can( 'bp_moderate' ) || ( is_multisite() && wp_is_large_network( 'users' ) ) ) {
 		wp_die( -1 );
 	}
 

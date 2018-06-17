@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -69,4 +70,4 @@ endswitch; ?>
  *
  * @since 1.1.0
  */
-do_action( 'bp_after_profile_content' ); ?>
+do_action( 'bp_after_profile_content' );

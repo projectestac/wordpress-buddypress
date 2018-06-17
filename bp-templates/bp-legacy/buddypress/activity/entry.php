@@ -7,6 +7,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -56,7 +57,7 @@ do_action( 'bp_before_activity_entry' ); ?>
 
 			<?php if ( bp_get_activity_type() == 'activity_comment' ) : ?>
 
-				<a href="<?php bp_activity_thread_permalink(); ?>" class="button view bp-secondary-action" title="<?php esc_attr_e( 'View Conversation', 'buddypress' ); ?>"><?php _e( 'View Conversation', 'buddypress' ); ?></a>
+				<a href="<?php bp_activity_thread_permalink(); ?>" class="button view bp-secondary-action"><?php _e( 'View Conversation', 'buddypress' ); ?></a>
 
 			<?php endif; ?>
 
@@ -167,4 +168,4 @@ do_action( 'bp_before_activity_entry' ); ?>
  *
  * @since 1.2.0
  */
-do_action( 'bp_after_activity_entry' ); ?>
+do_action( 'bp_after_activity_entry' );

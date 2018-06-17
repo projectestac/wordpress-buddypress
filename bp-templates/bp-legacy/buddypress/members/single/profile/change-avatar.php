@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 ?>
@@ -81,7 +82,7 @@ do_action( 'bp_before_profile_avatar_upload_content' ); ?>
 
 <?php else : ?>
 
-	<p><?php _e( 'Your profile photo will be used on your profile and throughout the site. To change your profile photo, please create an account with <a href="http://gravatar.com">Gravatar</a> using the same email address as you used to register with this site.', 'buddypress' ); ?></p>
+	<p><?php _e( 'Your profile photo will be used on your profile and throughout the site. To change your profile photo, please create an account with <a href="https://gravatar.com">Gravatar</a> using the same email address as you used to register with this site.', 'buddypress' ); ?></p>
 
 <?php endif; ?>
 
@@ -92,4 +93,4 @@ do_action( 'bp_before_profile_avatar_upload_content' ); ?>
  *
  * @since 1.1.0
  */
-do_action( 'bp_after_profile_avatar_upload_content' ); ?>
+do_action( 'bp_after_profile_avatar_upload_content' );

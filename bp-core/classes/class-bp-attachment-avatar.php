@@ -110,7 +110,7 @@ class BP_Attachment_Avatar extends BP_Attachment {
 	 *
 	 * @param string $file               The absolute path to the file.
 	 * @param int    $ui_available_width Available width for the UI.
-	 * @return mixed
+	 * @return false|string|WP_Image_Editor|WP_Error
 	 */
 	public static function shrink( $file = '', $ui_available_width = 0 ) {
 		// Get image size.
@@ -204,11 +204,23 @@ class BP_Attachment_Avatar extends BP_Attachment {
 			return false;
 		}
 
+		if ( ! bp_attachments_current_user_can( 'edit_avatar', $args ) ) {
+			return false;
+		}
+
+		if ( 'user' === $args['object'] ) {
+			$avatar_dir = 'avatars';
+		} else {
+			$avatar_dir = sanitize_key( $args['object'] ) . '-avatars';
+		}
+
+		$args['item_id'] = (int) $args['item_id'];
+
 		/**
 		 * Original file is a relative path to the image
 		 * eg: /avatars/1/avatar.jpg
 		 */
-		$relative_path = $args['original_file'];
+		$relative_path = sprintf( '/%s/%s/%s', $avatar_dir, $args['item_id'], basename( $args['original_file'] ) );
 		$absolute_path = $this->upload_path . $relative_path;
 
 		// Bail if the avatar is not available.

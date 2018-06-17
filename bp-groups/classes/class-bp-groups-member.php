@@ -129,7 +129,7 @@ class BP_Groups_Member {
 	 * @since 1.6.0
 	 * @var WP_User
 	 */
-	var $user;
+	protected $user;
 
 	/**
 	 * Constructor method.
@@ -197,9 +197,57 @@ class BP_Groups_Member {
 			$this->is_confirmed  = (int) $member->is_confirmed;
 			$this->comments      = $member->comments;
 			$this->invite_sent   = (int) $member->invite_sent;
+		}
+	}
 
+	/**
+	 * Magic getter.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param string $key Key.
+	 * @return BP_Core_User|null
+	 */
+	public function __get( $key ) {
+		switch ( $key ) {
+			case 'user' :
+				return $this->get_user_object( $this->user_id );
+		}
+	}
+
+	/**
+	 * Magic issetter.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param string $key Key.
+	 * @return bool
+	 */
+	public function __isset( $key ) {
+		switch ( $key ) {
+			case 'user' :
+				return true;
+
+			default :
+				return isset( $this->{$key} );
+		}
+	}
+
+	/**
+	 * Get the user object corresponding to this membership.
+	 *
+	 * Used for lazyloading the protected `user` property.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @return BP_Core_User
+	 */
+	protected function get_user_object() {
+		if ( empty( $this->user ) ) {
 			$this->user = new BP_Core_User( $this->user_id );
 		}
+
+		return $this->user;
 	}
 
 	/**
@@ -434,7 +482,7 @@ class BP_Groups_Member {
 	 * @since 1.8.0
 	 *
 	 * @param int $group_id ID of the group.
-	 * @return bool True on success, false on failure.
+	 * @return bool|int True on success, false on failure.
 	 */
 	public static function refresh_total_member_count_for_group( $group_id ) {
 		return groups_update_groupmeta( $group_id, 'total_member_count', (int) BP_Groups_Group::get_total_member_count( $group_id ) );
@@ -1040,6 +1088,10 @@ class BP_Groups_Member {
 	public static function get_group_administrator_ids( $group_id ) {
 		global $wpdb;
 
+		if ( empty( $group_id ) ) {
+			return array();
+		}
+
 		$group_admins = wp_cache_get( $group_id, 'bp_group_admins' );
 
 		if ( false === $group_admins ) {
@@ -1047,9 +1099,14 @@ class BP_Groups_Member {
 			$group_admins = wp_cache_get( $group_id, 'bp_group_admins' );
 		}
 
-		// Integer casting.
-		foreach ( (array) $group_admins as $key => $data ) {
-			$group_admins[ $key ]->user_id = (int) $group_admins[ $key ]->user_id;
+		if ( false === $group_admins ) {
+			// The wp_cache_get is still coming up empty. Return an empty array.
+			$group_admins = array();
+		} else {
+			// Cast the user_id property as an integer.
+			foreach ( (array) $group_admins as $key => $data ) {
+				$group_admins[ $key ]->user_id = (int) $group_admins[ $key ]->user_id;
+			}
 		}
 
 		return $group_admins;
@@ -1110,6 +1167,10 @@ class BP_Groups_Member {
 	public static function get_group_moderator_ids( $group_id ) {
 		global $wpdb;
 
+		if ( empty( $group_id ) ) {
+			return array();
+		}
+
 		$group_mods = wp_cache_get( $group_id, 'bp_group_mods' );
 
 		if ( false === $group_mods ) {
@@ -1117,9 +1178,14 @@ class BP_Groups_Member {
 			$group_mods = wp_cache_get( $group_id, 'bp_group_mods' );
 		}
 
-		// Integer casting.
-		foreach ( (array) $group_mods as $key => $data ) {
-			$group_mods[ $key ]->user_id = (int) $group_mods[ $key ]->user_id;
+		if ( false === $group_mods ) {
+			// The wp_cache_get is still coming up empty. Return an empty array.
+			$group_mods = array();
+		} else {
+			// Cast the user_id property as an integer.
+			foreach ( (array) $group_mods as $key => $data ) {
+				$group_mods[ $key ]->user_id = (int) $group_mods[ $key ]->user_id;
+			}
 		}
 
 		return $group_mods;
@@ -1169,7 +1235,7 @@ class BP_Groups_Member {
 	 * @param bool       $exclude_admins_mods Whether or not to exclude admins and moderators.
 	 * @param bool       $exclude_banned      Whether or not to exclude banned members.
 	 * @param bool|array $exclude             Array of user IDs to exclude.
-	 * @return mixed
+	 * @return false|array
 	 */
 	public static function get_all_for_group( $group_id, $limit = false, $page = false, $exclude_admins_mods = true, $exclude_banned = true, $exclude = false ) {
 		global $wpdb;

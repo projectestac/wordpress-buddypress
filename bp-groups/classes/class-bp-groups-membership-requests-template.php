@@ -96,18 +96,17 @@ class BP_Groups_Membership_Requests_Template {
 				2 => 'max',
 			);
 
-			$func_args = func_get_args();
-			$args      = bp_core_parse_args_array( $old_args_keys, $func_args );
+			$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 		}
 
-		$r = wp_parse_args( $args, array(
+		$r = bp_parse_args( $args, array(
 			'page'     => 1,
 			'per_page' => 10,
 			'page_arg' => 'mrpage',
 			'max'      => false,
 			'type'     => 'first_joined',
 			'group_id' => bp_get_current_group_id(),
-		) );
+		), 'groups_membership_requests_template' );
 
 		$this->pag_arg  = sanitize_key( $r['page_arg'] );
 		$this->pag_page = bp_sanitize_pagination_arg( $this->pag_arg, $r['page']     );

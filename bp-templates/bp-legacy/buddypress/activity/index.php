@@ -6,6 +6,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -91,7 +92,17 @@ do_action( 'bp_before_directory_activity' ); ?>
 
 					<?php if ( bp_get_total_group_count_for_user( bp_loggedin_user_id() ) ) : ?>
 
-						<li id="activity-groups"><a href="<?php echo bp_loggedin_user_domain() . bp_get_activity_slug() . '/' . bp_get_groups_slug() . '/'; ?>"><?php printf( __( 'My Groups %s', 'buddypress' ), '<span>' . bp_get_total_group_count_for_user( bp_loggedin_user_id() ) . '</span>' ); ?></a></li>
+						<?php
+						printf(
+							'<li id="activity-groups"><a href="%1$s">%2$s</a></li>',
+							esc_url( bp_loggedin_user_domain() . bp_get_activity_slug() . '/' . bp_get_groups_slug() . '/' ),
+							sprintf(
+								/* translators: %s: total joined groups count for the current user */
+								__( 'My Groups %s', 'buddypress' ),
+								'<span>' . bp_get_total_group_count_for_user( bp_loggedin_user_id() ) . '</span>'
+							)
+						);
+						?>
 
 					<?php endif; ?>
 
@@ -142,7 +153,7 @@ do_action( 'bp_before_directory_activity' ); ?>
 
 	<div class="item-list-tabs no-ajax" id="subnav" aria-label="<?php esc_attr_e( 'Activity secondary navigation', 'buddypress' ); ?>" role="navigation">
 		<ul>
-			<li class="feed"><a href="<?php bp_sitewide_activity_feed_link(); ?>" title="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>"><?php _e( 'RSS', 'buddypress' ); ?></a></li>
+			<li class="feed"><a href="<?php bp_sitewide_activity_feed_link(); ?>" class="bp-tooltip" data-bp-tooltip="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>" aria-label="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>"><?php _e( 'RSS', 'buddypress' ); ?></a></li>
 
 			<?php
 

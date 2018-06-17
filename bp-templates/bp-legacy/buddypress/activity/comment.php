@@ -7,6 +7,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -67,4 +68,4 @@ do_action( 'bp_before_activity_comment' ); ?>
  *
  * @since 1.5.0
  */
-do_action( 'bp_after_activity_comment' ); ?>
+do_action( 'bp_after_activity_comment' );

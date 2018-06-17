@@ -87,7 +87,7 @@ function xprofile_insert_field_group( $args = '' ) {
  * @since 1.0.0
  *
  * @param int $field_group_id Field group ID to fetch.
- * @return boolean|BP_XProfile_Group
+ * @return false|BP_XProfile_Group
  */
 function xprofile_get_field_group( $field_group_id = 0 ) {
 
@@ -158,6 +158,7 @@ function bp_xprofile_get_field_types() {
 		'selectbox'      => 'BP_XProfile_Field_Type_Selectbox',
 		'textarea'       => 'BP_XProfile_Field_Type_Textarea',
 		'textbox'        => 'BP_XProfile_Field_Type_Textbox',
+		'telephone'      => 'BP_XProfile_Field_Type_Telephone',
 	);
 
 	/**
@@ -282,18 +283,24 @@ function xprofile_insert_field( $args = '' ) {
  * Get a profile field object.
  *
  * @since 1.1.0
+ * @since 2.8.0 Added `$user_id` and `$get_data` parameters.
  *
- * @param int|object $field ID of the field or object representing field data.
+ * @param int|object $field    ID of the field or object representing field data.
+ * @param int|null   $user_id  Optional. ID of the user associated with the field.
+ *                             Ignored if `$get_data` is false. If `$get_data` is
+ *                             true, but no `$user_id` is provided, defaults to
+ *                             logged-in user ID.
+ * @param bool       $get_data Whether to fetch data for the specified `$user_id`.
  * @return BP_XProfile_Field|null Field object if found, otherwise null.
  */
-function xprofile_get_field( $field ) {
+function xprofile_get_field( $field, $user_id = null, $get_data = true ) {
 	if ( $field instanceof BP_XProfile_Field ) {
 		$_field = $field;
 	} elseif ( is_object( $field ) ) {
 		$_field = new BP_XProfile_Field();
 		$_field->fill_data( $field );
 	} else {
-		$_field = BP_XProfile_Field::get_instance( $field );
+		$_field = BP_XProfile_Field::get_instance( $field, $user_id, $get_data );
 	}
 
 	if ( ! $_field ) {
@@ -458,6 +465,8 @@ function xprofile_set_field_data( $field, $user_id, $value, $is_required = false
 	$field           = new BP_XProfile_ProfileData();
 	$field->field_id = $field_id;
 	$field->user_id  = $user_id;
+
+	// Gets un/reserialized via xprofile_sanitize_data_value_before_save()
 	$field->value    = maybe_serialize( $value );
 
 	return $field->save();
@@ -585,7 +594,7 @@ function xprofile_check_is_required_field( $field_id ) {
  * @since 1.0.0
  *
  * @param string $field_name The name of the field to get the ID for.
- * @return int $field_id on success, false on failure.
+ * @return int|null $field_id on success, false on failure.
  */
 function xprofile_get_field_id_from_name( $field_name ) {
 	return BP_XProfile_Field::get_id_from_name( $field_name );
@@ -775,15 +784,17 @@ function bp_xprofile_bp_user_query_search( $sql, BP_User_Query $query ) {
 
 	// Combine the core search (against wp_users) into a single OR clause
 	// with the xprofile_data search.
-	$search_xprofile = $wpdb->prepare(
-		"u.{$query->uid_name} IN ( SELECT user_id FROM {$bp->profile->table_name_data} WHERE value LIKE %s OR value LIKE %s )",
+	$matched_user_ids = $wpdb->get_col( $wpdb->prepare(
+		"SELECT user_id FROM {$bp->profile->table_name_data} WHERE value LIKE %s OR value LIKE %s",
 		$search_terms_nospace,
 		$search_terms_space
-	);
+	) );
 
-	$search_core     = $sql['where']['search'];
-	$search_combined = "( {$search_xprofile} OR {$search_core} )";
-	$sql['where']['search'] = $search_combined;
+	if ( ! empty( $matched_user_ids ) ) {
+		$search_core     = $sql['where']['search'];
+		$search_combined = " ( u.{$query->uid_name} IN (" . implode(',', $matched_user_ids) . ") OR {$search_core} )";
+		$sql['where']['search'] = $search_combined;
+	}
 
 	return $sql;
 }
@@ -828,9 +839,7 @@ function xprofile_sync_wp_profile( $user_id = 0 ) {
 	bp_update_user_meta( $user_id, 'last_name',  $lastname  );
 
 	wp_update_user( array( 'ID' => $user_id, 'display_name' => $fullname ) );
-	wp_cache_delete( 'bp_core_userdata_' . $user_id, 'bp' );
 }
-add_action( 'xprofile_updated_profile', 'xprofile_sync_wp_profile' );
 add_action( 'bp_core_signup_user',      'xprofile_sync_wp_profile' );
 add_action( 'bp_core_activated_user',   'xprofile_sync_wp_profile' );
 
@@ -854,6 +863,22 @@ function xprofile_sync_bp_profile( &$errors, $update, &$user ) {
 }
 add_action( 'user_profile_update_errors', 'xprofile_sync_bp_profile', 10, 3 );
 
+/**
+ * Update the WP display, last, and first name fields when the xprofile display name field is updated.
+ *
+ * @since 3.0.0
+ *
+ * @param BP_XProfile_ProfileData $data Current instance of the profile data being saved.
+ */
+function xprofile_sync_wp_profile_on_single_field_set( $data ) {
+
+	if ( bp_xprofile_fullname_field_id() !== $data->field_id ) {
+		return;
+	}
+
+	xprofile_sync_wp_profile( $data->user_id );
+}
+add_action( 'xprofile_data_after_save', 'xprofile_sync_wp_profile_on_single_field_set' );
 
 /**
  * When a user is deleted, we need to clean up the database and remove all the
@@ -1063,7 +1088,7 @@ function bp_xprofile_fullname_field_id() {
 		global $wpdb;
 
 		$bp = buddypress();
-		$id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bp->profile->table_name_fields} WHERE name = %s", bp_xprofile_fullname_field_name() ) );
+		$id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bp->profile->table_name_fields} WHERE name = %s", addslashes( bp_xprofile_fullname_field_name() ) ) );
 
 		wp_cache_set( 'fullname_field_id', $id, 'bp_xprofile' );
 	}
@@ -1286,4 +1311,28 @@ function bp_xprofile_get_fields_by_visibility_levels( $user_id, $levels = array(
 	}
 
 	return $field_ids;
+}
+
+/**
+ * Formats datebox field values passed through a POST request.
+ *
+ * @since 2.8.0
+ *
+ * @param int $field_id The id of the current field being looped through.
+ * @return void This function only changes the global $_POST that should contain
+ *              the datebox data.
+ */
+function bp_xprofile_maybe_format_datebox_post_data( $field_id ) {
+	if ( ! isset( $_POST['field_' . $field_id] ) ) {
+		if ( ! empty( $_POST['field_' . $field_id . '_day'] ) && ! empty( $_POST['field_' . $field_id . '_month'] ) && ! empty( $_POST['field_' . $field_id . '_year'] ) ) {
+			// Concatenate the values.
+			$date_value = $_POST['field_' . $field_id . '_day'] . ' ' . $_POST['field_' . $field_id . '_month'] . ' ' . $_POST['field_' . $field_id . '_year'];
+
+			// Check that the concatenated value can be turned into a timestamp.
+			if ( $timestamp = strtotime( $date_value ) ) {
+				// Add the timestamp to the global $_POST that should contain the datebox data.
+				$_POST['field_' . $field_id] = date( 'Y-m-d H:i:s', $timestamp );
+			}
+		}
+	}
 }

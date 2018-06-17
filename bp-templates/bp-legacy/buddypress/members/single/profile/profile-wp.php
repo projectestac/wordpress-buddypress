@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -111,4 +112,4 @@ do_action( 'bp_profile_field_buttons' ); ?>
  *
  * @since 1.2.0
  */
-do_action( 'bp_after_profile_loop_content' ); ?>
+do_action( 'bp_after_profile_loop_content' );

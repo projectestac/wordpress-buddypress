@@ -89,9 +89,28 @@ Favorite Food: Saltimbocca alla Romana
 Name: shanebp
 Title: Community Support
 
+Name: Stephen Edgar
+Title: Core Developer
+Twitter: netweb
+Favorite Food: Tacos
+
+Name: Slava Abakumov
+Title: Core Developer
+Twitter: slaFFik
+Favorite Food: Cakes
+
+Name: Venutius
+Title: Community Support
+Favourite Food: Apple Crumble
+
+Name: Laurens Offereins
+Title: Core Developer
+Twitter: lmoffereins
+Favorite Food: Lasagna
+
 /* THANKS */
 modemlooper, cnorris23, karmatosed, photomatt
 
 /* META */
-Updated: 2016/10/06
+Updated: 2018/04/05
 See: http://humanstxt.org/

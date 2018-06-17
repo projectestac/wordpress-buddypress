@@ -10,10 +10,6 @@
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
-if ( ! buddypress()->do_autoload ) {
-	require dirname( __FILE__ ) . '/classes/class-bp-activity-template.php';
-}
-
 /**
  * Output the activity component slug.
  *
@@ -270,8 +266,8 @@ function bp_has_activities( $args = '' ) {
 		// Filtering
 		'user_id'           => $user_id,     // user_id to filter on.
 		'object'            => $object,      // Object to filter on e.g. groups, profile, status, friends.
-		'action'            => false,        // Action to filter on e.g. activity_update, new_forum_post, profile_updated.
-		'primary_id'        => $primary_id,  // Object ID to filter on e.g. a group_id or forum_id or blog_id etc.
+		'action'            => false,        // Action to filter on e.g. activity_update, profile_updated.
+		'primary_id'        => $primary_id,  // Object ID to filter on e.g. a group_id or blog_id etc.
 		'secondary_id'      => false,        // Secondary object ID to filter on e.g. a post_id.
 		'offset'            => false,        // Return only items >= this ID.
 		'since'             => false,        // Return only items recorded since this Y-m-d H:i:s date.
@@ -1390,7 +1386,8 @@ function bp_activity_content_body() {
 		 *
 		 * @since 1.2.0
 		 *
-		 * @param array $value Array containing the current activity content body and the current activity.
+		 * @param string $content  Content body.
+		 * @param object $activity Activity object. Passed by reference.
 		 */
 		return apply_filters_ref_array( 'bp_get_activity_content_body', array( $activities_template->activity->content, &$activities_template->activity ) );
 	}
@@ -1496,7 +1493,7 @@ function bp_insert_activity_meta( $content = '' ) {
 
 		// Setup variables for activity meta.
 		$activity_permalink = bp_activity_get_permalink( $activities_template->activity->id, $activities_template->activity );
-		$activity_meta      = sprintf( '%1$s <a href="%2$s" class="view activity-time-since" title="%3$s">%4$s</a>',
+		$activity_meta      = sprintf( '%1$s <a href="%2$s" class="view activity-time-since bp-tooltip" data-bp-tooltip="%3$s">%4$s</a>',
 			$new_content,
 			$activity_permalink,
 			esc_attr__( 'View Discussion', 'buddypress' ),
@@ -1536,7 +1533,7 @@ function bp_insert_activity_meta( $content = '' ) {
  *
  * @global object $activities_template {@link BP_Activity_Template}
  *
- * @param BP_Activity_Activity $activity Optional. Falls back on the current item in the loop.
+ * @param false|BP_Activity_Activity $activity Optional. Falls back on the current item in the loop.
  * @return bool True if can delete, false otherwise.
  */
 function bp_activity_user_can_delete( $activity = false ) {
@@ -2093,7 +2090,7 @@ function bp_activity_comment_delete_link() {
 	 *                      activity comment.
 	 */
 	function bp_get_activity_comment_delete_link() {
-		$link = wp_nonce_url( bp_get_activity_directory_permalink() . 'delete/' . bp_get_activity_comment_id() . '?cid=' . bp_get_activity_comment_id(), 'bp_activity_delete_link' );
+		$link = wp_nonce_url( trailingslashit( bp_get_activity_directory_permalink() . 'delete/' . bp_get_activity_comment_id() ) . '?cid=' . bp_get_activity_comment_id(), 'bp_activity_delete_link' );
 
 		/**
 		 * Filters the link used for deleting the activity comment currently being displayed.
@@ -2139,10 +2136,12 @@ function bp_activity_comment_content() {
 		 * Filters the content of the current activity comment.
 		 *
 		 * @since 1.2.0
+		 * @since 3.0.0 Added $context parameter to disambiguate from bp_get_activity_comment_content().
 		 *
 		 * @param string $content The content of the current activity comment.
+		 * @param string $context This filter's context ("get").
 		 */
-		return apply_filters( 'bp_activity_comment_content', $content );
+		return apply_filters( 'bp_activity_comment_content', $content, 'get' );
 	}
 
 /**
@@ -2230,19 +2229,61 @@ function bp_activity_comment_count() {
  * Output the depth of the current activity comment.
  *
  * @since 2.0.0
+ * @since 2.8.0 Added $comment as a parameter.
+ *
+ * @param object|int $comment Object of the activity comment or activity comment ID. Usually unnecessary
+ *                            when used in activity comment loop.
  */
-function bp_activity_comment_depth() {
-	echo bp_activity_get_comment_depth();
+function bp_activity_comment_depth( $comment = 0 ) {
+	echo bp_activity_get_comment_depth( $comment );
 }
+
 	/**
 	 * Return the current activity comment depth.
 	 *
 	 * @since 2.0.0
+	 * @since 2.8.0 Added $comment as a parameter.
 	 *
-	 * @return int $depth Depth for the current activity comment.
+	 * @param  object|int $comment Object of the activity comment or activity comment ID. Usually unnecessary
+	 *                             when used in activity comment loop.
+	 * @return int
 	 */
-	function bp_activity_get_comment_depth() {
-		global $activities_template;
+	function bp_activity_get_comment_depth( $comment = 0 ) {
+		$depth = 0;
+
+		// Activity comment loop takes precedence.
+		if ( isset( $GLOBALS['activities_template']->activity->current_comment->depth ) ) {
+			$depth = $GLOBALS['activities_template']->activity->current_comment->depth;
+
+		// Get depth for activity comment manually.
+		} elseif ( ! empty( $comment ) ) {
+			// We passed an activity ID, so fetch the activity object.
+			if ( is_int( $comment ) ) {
+				$comment = new BP_Activity_Activity( $comment );
+			}
+
+			// Recurse through activity tree to find the depth.
+			if ( is_object( $comment ) && isset( $comment->type ) && 'activity_comment' === $comment->type ) {
+				// Fetch the entire root comment tree... ugh.
+				$comments = BP_Activity_Activity::get_activity_comments( $comment->item_id, 1, constant( 'PHP_INT_MAX' ) );
+
+				// Recursively find our comment object from the comment tree.
+				$iterator  = new RecursiveArrayIterator( $comments );
+				$recursive = new RecursiveIteratorIterator( $iterator, RecursiveIteratorIterator::SELF_FIRST );
+				foreach ( $recursive as $cid => $cobj ) {
+					// Skip items that are not a comment object.
+					if ( ! is_numeric( $cid ) || ! is_object( $cobj ) ) {
+						continue;
+					}
+
+					// We found the activity comment! Set the depth.
+					if ( $cid === $comment->id && isset( $cobj->depth ) ) {
+						$depth = $cobj->depth;
+						break;
+					}
+				}
+			}
+		}
 
 		/**
 		 * Filters the comment depth of the current activity comment.
@@ -2251,7 +2292,7 @@ function bp_activity_comment_depth() {
 		 *
 		 * @param int $depth Depth for the current activity comment.
 		 */
-		return apply_filters( 'bp_activity_get_comment_depth', $activities_template->activity->current_comment->depth );
+		return apply_filters( 'bp_activity_get_comment_depth', $depth );
 	}
 
 /**
@@ -2303,8 +2344,8 @@ function bp_activity_comment_form_nojs_display() {
 	 *
 	 * @global object $activities_template {@link BP_Activity_Template}
 	 *
-	 * @return string|bool The activity comment form no JavaScript
-	 *                     display CSS. False on failure.
+	 * @return string|false The activity comment form no JavaScript
+	 *                      display CSS. False on failure.
 	 */
 	function bp_get_activity_comment_form_nojs_display() {
 		global $activities_template;
@@ -2697,7 +2738,7 @@ function bp_activity_latest_update( $user_id = 0 ) {
 		 * @param string $value   The excerpt for the latest update.
 		 * @param int    $user_id ID of the queried user.
 		 */
-		$latest_update = apply_filters( 'bp_get_activity_latest_update_excerpt', trim( strip_tags( bp_create_excerpt( $update['content'], 358 ) ) ), $user_id );
+		$latest_update = apply_filters( 'bp_get_activity_latest_update_excerpt', trim( strip_tags( bp_create_excerpt( $update['content'], bp_activity_get_excerpt_length() ) ) ), $user_id );
 
 		$latest_update = sprintf(
 			'%s <a href="%s">%s</a>',
@@ -2887,7 +2928,7 @@ function bp_activity_can_comment_reply( $comment = false ) {
 		// Fall back on current comment in activity loop.
 		$comment_depth = isset( $comment->depth )
 			? intval( $comment->depth )
-			: bp_activity_get_comment_depth();
+			: bp_activity_get_comment_depth( $comment );
 
 		// Threading is turned on, so check the depth.
 		if ( get_option( 'thread_comments' ) ) {
@@ -2905,7 +2946,7 @@ function bp_activity_can_comment_reply( $comment = false ) {
 	 * @since 1.5.0
 	 *
 	 * @param bool   $can_comment Status on if activity reply can be commented on.
-	 * @param string $comment     Current comment being checked on.
+	 * @param object $comment     Current comment object being checked on.
 	 */
 	return (bool) apply_filters( 'bp_activity_can_comment_reply', $can_comment, $comment );
 }
@@ -3799,45 +3840,15 @@ function bp_activity_show_filters( $context = '' ) {
 	 * @return string HTML for <option> values.
 	 */
 	function bp_get_activity_show_filters( $context = '' ) {
-		// Set default context based on current page.
-		if ( empty( $context ) ) {
-
-			// On member pages, default to 'member', unless this
-			// is a user's Groups activity.
-			if ( bp_is_user() ) {
-				if ( bp_is_active( 'groups' ) && bp_is_current_action( bp_get_groups_slug() ) ) {
-					$context = 'member_groups';
-				} else {
-					$context = 'member';
-				}
-
-			// On individual group pages, default to 'group'.
-			} elseif ( bp_is_active( 'groups' ) && bp_is_group() ) {
-				$context = 'group';
-
-			// 'activity' everywhere else.
-			} else {
-				$context = 'activity';
-			}
-		}
-
 		$filters = array();
-
-		// Walk through the registered actions, and prepare an the
-		// select box options.
-		foreach ( bp_activity_get_actions() as $actions ) {
-			foreach ( $actions as $action ) {
-				if ( ! in_array( $context, (array) $action['context'] ) ) {
-					continue;
-				}
-
-				// Friends activity collapses two filters into one.
-				if ( in_array( $action['key'], array( 'friendship_accepted', 'friendship_created' ) ) ) {
-					$action['key'] = 'friendship_accepted,friendship_created';
-				}
-
-				$filters[ $action['key'] ] = $action['label'];
+		$actions = bp_activity_get_actions_for_context( $context );
+		foreach ( $actions as $action ) {
+			// Friends activity collapses two filters into one.
+			if ( in_array( $action['key'], array( 'friendship_accepted', 'friendship_created' ) ) ) {
+				$action['key'] = 'friendship_accepted,friendship_created';
 			}
+
+			$filters[ $action['key'] ] = $action['label'];
 		}
 
 		/**

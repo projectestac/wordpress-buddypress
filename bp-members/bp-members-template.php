@@ -12,10 +12,6 @@
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
-if ( ! buddypress()->do_autoload ) {
-	require dirname( __FILE__ ) . '/classes/class-bp-core-members-template.php';
-}
-
 /**
  * Output the profile component slug.
  *
@@ -1001,7 +997,7 @@ function bp_member_last_active( $args = array() ) {
  *
  * @since 1.2.0
  *
- * @param array|string $args Array of arguments for latest update.
+ * @param array|string $args {@see bp_get_member_latest_update()}.
  */
 function bp_member_latest_update( $args = '' ) {
 	echo bp_get_member_latest_update( $args );
@@ -1163,7 +1159,9 @@ function bp_member_profile_data( $args = '' ) {
 		 * @param string|bool $data Profile data if found, otherwise false.
 		 * @param array       $r    Array of parsed arguments.
 		 */
-		$data = apply_filters( 'bp_get_member_profile_data_' . $profile_data[ $r['field'] ]['field_type'], $data, $r );
+		if ( ! empty( $profile_data[ $r['field'] ]['field_type'] ) ) {
+			$data = apply_filters( 'bp_get_member_profile_data_' . $profile_data[ $r['field'] ]['field_type'], $data, $r );
+		}
 
 		return $data;
 	}
@@ -1524,7 +1522,7 @@ function bp_displayed_user_use_cover_image_header() {
  *
  * @see bp_get_loggedin_user_avatar() for a description of params.
  *
- * @param array|string $args Array of arguments for logged in user avatar.
+ * @param array|string $args {@see bp_get_loggedin_user_avatar()}.
  */
 function bp_loggedin_user_avatar( $args = '' ) {
 	echo bp_get_loggedin_user_avatar( $args );
@@ -1579,7 +1577,7 @@ function bp_loggedin_user_avatar( $args = '' ) {
  *
  * @see bp_get_displayed_user_avatar() for a description of params.
  *
- * @param array|string $args Array of arguments for displayed user avatar.
+ * @param array|string $args {@see bp_get_displayed_user_avatar()}.
  */
 function bp_displayed_user_avatar( $args = '' ) {
 	echo bp_get_displayed_user_avatar( $args );
@@ -2118,6 +2116,34 @@ function bp_activation_page() {
 		 */
 		return apply_filters( 'bp_get_activation_page', $page );
 	}
+
+/**
+ * Get the activation key from the current request URL.
+ *
+ * @since 3.0.0
+ *
+ * @return string
+ */
+function bp_get_current_activation_key() {
+	$key = '';
+
+	if ( bp_is_current_component( 'activate' ) ) {
+		if ( isset( $_GET['key'] ) ) {
+			$key = wp_unslash( $_GET['key'] );
+		} else {
+			$key = bp_current_action();
+		}
+	}
+
+	/**
+	 * Filters the activation key from the current request URL.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $key Activation key.
+	 */
+	return apply_filters( 'bp_get_current_activation_key', $key );
+}
 
 /**
  * Output the username submitted during signup.

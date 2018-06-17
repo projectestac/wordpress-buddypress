@@ -96,8 +96,6 @@ add_filter( 'bp_get_activity_latest_update_excerpt', 'bp_activity_make_nofollow_
 add_filter( 'bp_get_activity_feed_item_description', 'bp_activity_make_nofollow_filter' );
 
 add_filter( 'pre_comment_content',                   'bp_activity_at_name_filter' );
-add_filter( 'group_forum_topic_text_before_save',    'bp_activity_at_name_filter' );
-add_filter( 'group_forum_post_text_before_save',     'bp_activity_at_name_filter' );
 add_filter( 'the_content',                           'bp_activity_at_name_filter' );
 add_filter( 'bp_activity_get_embed_excerpt',         'bp_activity_at_name_filter' );
 
@@ -204,32 +202,6 @@ function bp_activity_check_blacklist_keys( $activity ) {
  * @return string $content Filtered activity content.
  */
 function bp_activity_filter_kses( $content ) {
-	global $allowedtags;
-
-	$activity_allowedtags = $allowedtags;
-	$activity_allowedtags['a']['class'] = array();
-	$activity_allowedtags['a']['id']    = array();
-	$activity_allowedtags['a']['rel']   = array();
-	$activity_allowedtags['a']['title'] = array();
-
-	$activity_allowedtags['b']    = array();
-	$activity_allowedtags['code'] = array();
-	$activity_allowedtags['i']    = array();
-
-	$activity_allowedtags['img']           = array();
-	$activity_allowedtags['img']['src']    = array();
-	$activity_allowedtags['img']['alt']    = array();
-	$activity_allowedtags['img']['width']  = array();
-	$activity_allowedtags['img']['height'] = array();
-	$activity_allowedtags['img']['class']  = array();
-	$activity_allowedtags['img']['id']     = array();
-	$activity_allowedtags['img']['title']  = array();
-
-	$activity_allowedtags['span']                   = array();
-	$activity_allowedtags['span']['class']          = array();
-	$activity_allowedtags['span']['data-livestamp'] = array();
-
-
 	/**
 	 * Filters the allowed HTML tags for BuddyPress Activity content.
 	 *
@@ -237,7 +209,7 @@ function bp_activity_filter_kses( $content ) {
 	 *
 	 * @param array $value Array of allowed HTML tags and attributes.
 	 */
-	$activity_allowedtags = apply_filters( 'bp_activity_allowed_tags', $activity_allowedtags );
+	$activity_allowedtags = apply_filters( 'bp_activity_allowed_tags', bp_get_allowedtags() );
 	return wp_kses( $content, $activity_allowedtags );
 }
 
@@ -450,14 +422,7 @@ function bp_activity_truncate_entry( $text, $args = array() ) {
 	 */
 	$append_text    = apply_filters( 'bp_activity_excerpt_append_text', __( '[Read more]', 'buddypress' ) );
 
-	/**
-	 * Filters the excerpt length for the activity excerpt.
-	 *
-	 * @since 1.5.0
-	 *
-	 * @param int $value Number indicating how many words to trim the excerpt down to.
-	 */
-	$excerpt_length = apply_filters( 'bp_activity_excerpt_length', 358 );
+	$excerpt_length = bp_activity_get_excerpt_length();
 
 	$args = wp_parse_args( $args, array( 'ending' => __( '&hellip;', 'buddypress' ) ) );
 
@@ -603,7 +568,7 @@ function bp_activity_heartbeat_last_recorded( $response = array(), $data = array
 	ob_end_clean();
 
 	// Remove the temporary filter.
-	remove_filter( 'bp_get_activity_css_class', 'bp_activity_newest_class', 10, 1 );
+	remove_filter( 'bp_get_activity_css_class', 'bp_activity_newest_class', 10 );
 
 	if ( ! empty( $newest_activities['last_recorded'] ) ) {
 		$response['bp_activity_newest_activities'] = $newest_activities;

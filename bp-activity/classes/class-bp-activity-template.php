@@ -159,8 +159,7 @@ class BP_Activity_Template {
 				12 => 'page_arg'
 			);
 
-			$func_args = func_get_args();
-			$args = bp_core_parse_args_array( $old_args_keys, $func_args );
+			$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 		}
 
 		$defaults = array(
@@ -192,11 +191,11 @@ class BP_Activity_Template {
 		$this->pag_page = bp_sanitize_pagination_arg( $this->pag_arg, $r['page']     );
 		$this->pag_num  = bp_sanitize_pagination_arg( 'num',          $r['per_page'] );
 
-		// Check if blog/forum replies are disabled.
+		// Check if post/comment replies are disabled.
 		$this->disable_blogforum_replies = (bool) bp_core_get_root_option( 'bp-disable-blogforum-comments' );
 
 		// Get an array of the logged in user's favorite activities.
-		$this->my_favs = maybe_unserialize( bp_get_user_meta( bp_loggedin_user_id(), 'bp_favorite_activities', true ) );
+		$this->my_favs = bp_get_user_meta( bp_loggedin_user_id(), 'bp_favorite_activities', true );
 
 		// Fetch specific activity items based on ID's.
 		if ( !empty( $include ) ) {

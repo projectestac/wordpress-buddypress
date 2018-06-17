@@ -29,11 +29,6 @@ function bp_get_default_options() {
 
 		'bp-deactivated-components'            => array(),
 
-		/* bbPress ***********************************************************/
-
-		// Legacy bbPress config location.
-		'bb-config-location'                   => ABSPATH . 'bb-config.php',
-
 		/* XProfile **********************************************************/
 
 		// Base profile groups name.
@@ -70,11 +65,11 @@ function bp_get_default_options() {
 		// Allow users to delete their own accounts.
 		'bp-disable-account-deletion'          => false,
 
-		// Allow comments on blog and forum activity items.
+		// Allow comments on post and comment activity items.
 		'bp-disable-blogforum-comments'        => true,
 
 		// The ID for the current theme package.
-		'_bp_theme_package_id'                 => 'legacy',
+		'_bp_theme_package_id'                 => 'nouveau',
 
 		// Email unsubscribe salt.
 		'bp-emails-unsubscribe-salt'           => '',
@@ -102,10 +97,10 @@ function bp_get_default_options() {
 
 		/* Legacy *********************************************/
 
-		// Whether to register the bp-default themes directory.
+		// Do not register the bp-default themes directory.
 		'_bp_retain_bp_default'                => false,
 
-		// Whether to load deprecated code.
+		// Ignore deprecated code.
 		'_bp_ignore_deprecated_code'           => true,
 
 		/* Widgets **************************************************/
@@ -188,8 +183,6 @@ function bp_delete_options() {
 /**
  * Add filters to each BP option, allowing them to be overloaded from inside the $bp->options array.
  *
- * Currently unused.
- *
  * @since 1.6.0
  */
 function bp_setup_option_filters() {
@@ -215,8 +208,6 @@ function bp_setup_option_filters() {
 /**
  * Filter default options and allow them to be overloaded from inside the $bp->options array.
  *
- * Currently unused.
- *
  * @since 1.6.0
  *
  * @param bool $value Optional. Default value false.
@@ -225,11 +216,8 @@ function bp_setup_option_filters() {
 function bp_pre_get_option( $value = false ) {
 	$bp = buddypress();
 
-	// Get the name of the current filter so we can manipulate it.
-	$filter = current_filter();
-
 	// Remove the filter prefix.
-	$option = str_replace( 'pre_option_', '', $filter );
+	$option = str_replace( 'pre_option_', '', current_filter() );
 
 	// Check the options global for preset value.
 	if ( ! empty( $bp->options[ $option ] ) ) {
@@ -294,7 +282,7 @@ function bp_add_option( $option_name, $value ) {
  * @since 1.5.0
  *
  * @param string $option_name The option key to be set.
- * @param string $value       The value to be set.
+ * @param mixed  $value       The value to be set.
  * @return bool True on success, false on failure.
  */
 function bp_update_option( $option_name, $value ) {
@@ -633,7 +621,7 @@ function bp_disable_account_deletion( $default = false ) {
 }
 
 /**
- * Are blog and forum activity stream comments disabled?
+ * Are post/comment activity stream comments disabled?
  *
  * @since 1.6.0
  *
@@ -698,57 +686,6 @@ function bp_force_buddybar( $default = true ) {
 	 * @param bool $value Whether or not BuddyBar should be forced in place of WP Admin Bar.
 	 */
 	return (bool) apply_filters( 'bp_force_buddybar', (bool) bp_get_option( '_bp_force_buddybar', $default ) );
-}
-
-/**
- * Output the group forums root parent forum id.
- *
- * @since 1.6.0
- *
- * @param bool|string $default Optional. Default: '0'.
- */
-function bp_group_forums_root_id( $default = '0' ) {
-	echo bp_get_group_forums_root_id( $default );
-}
-	/**
-	 * Return the group forums root parent forum id.
-	 *
-	 * @since 1.6.0
-	 *
-	 * @param bool|string $default Optional. Default: '0'.
-	 * @return int The ID of the group forums root forum.
-	 */
-	function bp_get_group_forums_root_id( $default = '0' ) {
-
-		/**
-		 * Filters the group forums root parent forum id.
-		 *
-		 * @since 1.6.0
-		 *
-		 * @param int $value The group forums root parent forum id.
-		 */
-		return (int) apply_filters( 'bp_get_group_forums_root_id', (int) bp_get_option( '_bp_group_forums_root_id', $default ) );
-	}
-
-/**
- * Check whether BuddyPress Group Forums are enabled.
- *
- * @since 1.6.0
- *
- * @param bool $default Optional. Fallback value if not found in the database.
- *                      Default: true.
- * @return bool True if group forums are active, otherwise false.
- */
-function bp_is_group_forums_active( $default = true ) {
-
-	/**
-	 * Filters whether or not BuddyPress Group Forums are enabled.
-	 *
-	 * @since 1.6.0
-	 *
-	 * @param bool $value Whether or not BuddyPress Group Forums are enabled.
-	 */
-	return (bool) apply_filters( 'bp_is_group_forums_active', (bool) bp_get_option( '_bp_enable_group_forums', $default ) );
 }
 
 /**

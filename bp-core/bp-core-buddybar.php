@@ -34,7 +34,7 @@ defined( 'ABSPATH' ) || exit;
  *                                                item is clicked.
  * }
  * @param string       $component The component the navigation is attached to. Defaults to 'members'.
- * @return bool|null Returns false on failure.
+ * @return null|false Returns false on failure.
  */
 function bp_core_new_nav_item( $args, $component = 'members' ) {
 	if ( ! bp_is_active( $component ) ) {
@@ -90,7 +90,7 @@ function bp_core_new_nav_item( $args, $component = 'members' ) {
  * Add a link to the main BuddyPress navigation.
  *
  * @since 2.4.0
- * @since 2.6.0 Introduced the `$component` parameter. Began returning a BP_Nav_Item object on success.
+ * @since 2.6.0 Introduced the `$component` parameter. Began returning a BP_Core_Nav_Item object on success.
  *
  * @param array|string $args {
  *     Array describing the new nav item.
@@ -108,7 +108,7 @@ function bp_core_new_nav_item( $args, $component = 'members' ) {
  *                                                item is clicked.
  * }
  * @param string       $component Optional. Component that the nav belongs to.
- * @return bool|BP_Nav_Item Returns false on failure, new nav item on success.
+ * @return false|array Returns false on failure, new nav item on success.
  */
 function bp_core_create_nav_link( $args = '', $component = 'members' ) {
 	$bp = buddypress();
@@ -190,7 +190,7 @@ function bp_core_create_nav_link( $args = '', $component = 'members' ) {
  *     @type bool|string $default_subnav_slug     Optional. The slug of the default subnav item to select when the nav
  *                                                item is clicked.
  * }
- * @return bool|null Returns false on failure.
+ * @return false|null Returns false on failure.
  */
 function bp_core_register_nav_screen_function( $args = '' ) {
 	$bp = buddypress();
@@ -394,8 +394,8 @@ function bp_core_new_nav_default( $args = '' ) {
  *     @type bool        $show_in_admin_bar Optional. Whether the nav item should be added into the group's "Edit"
  *                                          Admin Bar menu for group admins. Default: false.
  * }
- * @param string       $component The component the navigation is attached to. Defaults to 'members'.
- * @return bool|null Returns false on failure.
+ * @param string|null    $component The component the navigation is attached to. Defaults to 'members'.
+ * @return null|false Returns false on failure.
  */
 function bp_core_new_subnav_item( $args, $component = null ) {
 	// Backward compatibility for plugins using `bp_core_new_subnav_item()` without `$component`
@@ -446,7 +446,7 @@ function bp_core_new_subnav_item( $args, $component = null ) {
  * Add a subnav link to the BuddyPress navigation.
  *
  * @since 2.4.0
- * @since 2.6.0 Introduced the `$component` parameter. Began returning a BP_Nav_Item object on success.
+ * @since 2.6.0 Introduced the `$component` parameter. Began returning a BP_Core_Nav_Item object on success.
  *
  * @param array|string $args {
  *     Array describing the new subnav item.
@@ -475,7 +475,7 @@ function bp_core_new_subnav_item( $args, $component = null ) {
  *                                          Default: false.
  * }
  * @param string       $component The component the navigation is attached to. Defaults to 'members'.
- * @return bool|object Returns false on failure, new BP_Nav_Item instance on success.
+ * @return false|array Returns false on failure, new BP_Core_Nav_Item instance on success.
  */
 function bp_core_create_subnav_link( $args = '', $component = 'members' ) {
 	$bp = buddypress();
@@ -571,7 +571,7 @@ function bp_core_create_subnav_link( $args = '', $component = 'members' ) {
  *                                       Default: false.
  * }
  * @param string       $component The component the navigation is attached to. Defaults to 'members'.
- * @return bool|null Returns false on failure.
+ * @return null|false Returns false on failure.
  */
 function bp_core_register_subnav_screen_function( $args = '', $component = 'members' ) {
 	$bp = buddypress();
@@ -608,6 +608,11 @@ function bp_core_register_subnav_screen_function( $args = '', $component = 'memb
 	}
 
 	$parent_nav = $bp->{$component}->nav->get_primary( array( 'slug' => $r['parent_slug'] ), false );
+	if ( ! $parent_nav ) {
+		return ;
+	}
+
+	$parent_nav = reset( $parent_nav );
 
 	// If we *do* meet condition (2), then the added subnav item is currently being requested.
 	if ( ( bp_current_action() && bp_is_current_action( $r['slug'] ) ) || ( bp_is_user() && ! bp_current_action() && ! empty( $parent_nav->screen_function ) && $r['screen_function'] == $parent_nav->screen_function ) ) {
@@ -670,10 +675,9 @@ function bp_core_maybe_hook_new_subnav_screen_function( $subnav_item, $component
 
 			$bp = buddypress();
 
-			// If a redirect URL has been passed to the subnav
-			// item, respect it.
+			// If a redirect URL has been passed to the subnav item, respect it.
 			if ( ! empty( $subnav_item['no_access_url'] ) ) {
-				$message     = __( 'You do not have access to this page.', 'buddypress' );
+				$message     = __( 'You do not have access to that page.', 'buddypress' );
 				$redirect_to = trailingslashit( $subnav_item['no_access_url'] );
 
 			// In the case of a user page, we try to assume a
@@ -689,7 +693,7 @@ function bp_core_maybe_hook_new_subnav_screen_function( $subnav_item, $component
 				// component, as long as that component is
 				// publicly accessible.
 				if ( bp_is_my_profile() || ( isset( $parent_nav_default_item ) && $parent_nav_default_item->show_for_displayed_user ) ) {
-					$message     = __( 'You do not have access to this page.', 'buddypress' );
+					$message     = __( 'You do not have access to that page.', 'buddypress' );
 					$redirect_to = bp_displayed_user_domain();
 
 				// In some cases, the default tab is not accessible to
@@ -717,6 +721,7 @@ function bp_core_maybe_hook_new_subnav_screen_function( $subnav_item, $component
 				'message'  => $message,
 				'root'     => $redirect_to,
 				'redirect' => false,
+				'mode'     => 1
 			);
 
 		} else {
@@ -775,8 +780,8 @@ function bp_nav_item_has_subnav( $nav_item = '', $component = 'members' ) {
  * @since 1.0.0
  * @since 2.6.0 Introduced the `$component` parameter.
  *
- * @param string $slug      The slug of the primary navigation item.
- * @param string $component The component the navigation is attached to. Defaults to 'members'.
+ * @param string      $slug      The slug of the primary navigation item.
+ * @param string|null $component The component the navigation is attached to. Defaults to 'members'.
  * @return bool Returns false on failure, True on success.
  */
 function bp_core_remove_nav_item( $slug, $component = null ) {
@@ -800,10 +805,8 @@ function bp_core_remove_nav_item( $slug, $component = null ) {
 	$screen_functions = $bp->{$component}->nav->delete_nav( $slug );
 
 	// Reset backcompat nav items so that subsequent references will be correct.
-	if ( buddypress()->do_nav_backcompat ) {
-		$bp->bp_nav->reset();
-		$bp->bp_options_nav->reset();
-	}
+	$bp->bp_nav->reset();
+	$bp->bp_options_nav->reset();
 
 	if ( ! is_array( $screen_functions ) ) {
 		return false;
@@ -825,9 +828,9 @@ function bp_core_remove_nav_item( $slug, $component = null ) {
  * @since 1.0.0
  * @since 2.6.0 Introduced the `$component` parameter.
  *
- * @param string $parent_slug The slug of the primary navigation item.
- * @param string $slug        The slug of the secondary item to be removed.
- * @param string $component   The component the navigation is attached to. Defaults to 'members'.
+ * @param string      $parent_slug The slug of the primary navigation item.
+ * @param string      $slug        The slug of the secondary item to be removed.
+ * @param string|null $component   The component the navigation is attached to. Defaults to 'members'.
  * @return bool Returns false on failure, True on success.
  */
 function bp_core_remove_subnav_item( $parent_slug, $slug, $component = null ) {
@@ -851,10 +854,8 @@ function bp_core_remove_subnav_item( $parent_slug, $slug, $component = null ) {
 	$screen_functions = $bp->{$component}->nav->delete_nav( $slug, $parent_slug );
 
 	// Reset backcompat nav items so that subsequent references will be correct.
-	if ( buddypress()->do_nav_backcompat ) {
-		$bp->bp_nav->reset();
-		$bp->bp_options_nav->reset();
-	}
+	$bp->bp_nav->reset();
+	$bp->bp_options_nav->reset();
 
 	if ( ! is_array( $screen_functions ) ) {
 		return false;

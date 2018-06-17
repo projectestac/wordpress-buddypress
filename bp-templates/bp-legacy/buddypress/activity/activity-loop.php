@@ -4,6 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage bp-legacy
+ * @version 3.0.0
  */
 
 /**
@@ -66,4 +67,4 @@ do_action( 'bp_after_activity_loop' ); ?>
 
 	</form>
 
-<?php endif; ?>
+<?php endif;

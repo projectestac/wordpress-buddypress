@@ -65,7 +65,14 @@ function bp_blogs_get_blogs( $args = '' ) {
 		$r['include_blog_ids']
 	);
 
-	// Filter and return.
+	/**
+	 * Filters a set of blogs.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param array $blogs Array of blog data.
+	 * @param array $r     Parsed query arguments.
+	 */
 	return apply_filters( 'bp_blogs_get_blogs', $blogs, $r );
 }
 
@@ -93,7 +100,7 @@ function bp_blogs_record_existing_blogs( $args = array() ) {
 
 	// Query for all sites in network.
 	$r = bp_parse_args( $args, array(
-		'offset'   => false === bp_get_option( '_bp_record_blogs_offset' ) ? 0 : bp_get_option( '_bp_record_blogs_offset' ),
+		'offset'   => (int) bp_get_option( '_bp_record_blogs_offset' ),
 		'limit'    => 50,
 		'blog_ids' => array(),
 		'site_id'  => $wpdb->siteid
@@ -246,9 +253,26 @@ function bp_blogs_record_existing_blogs( $args = array() ) {
  */
 function bp_blogs_is_blog_recordable( $blog_id, $user_id = 0 ) {
 
+	/**
+	 * Filters whether or not a blog is globally activity stream recordable.
+	 *
+	 * @since 1.7.0
+	 *
+	 * @param bool $value   Whether or not recordable. Default true.
+	 * @param int  $blog_id Current blog ID.
+	 */
 	$recordable_globally = apply_filters( 'bp_blogs_is_blog_recordable', true, $blog_id );
 
 	if ( !empty( $user_id ) ) {
+		/**
+		 * Filters whether or not a blog is globally activity stream recordable for user.
+		 *
+		 * @since 1.7.0
+		 *
+		 * @param bool $recordable_globally Whether or not recordable.
+		 * @param int  $blog_id             Current blog ID.
+		 * @param int  $user_id             Current user ID.
+		 */
 		$recordable_for_user = apply_filters( 'bp_blogs_is_blog_recordable_for_user', $recordable_globally, $blog_id, $user_id );
 	} else {
 		$recordable_for_user = $recordable_globally;
@@ -275,9 +299,27 @@ function bp_blogs_is_blog_recordable( $blog_id, $user_id = 0 ) {
  */
 function bp_blogs_is_blog_trackable( $blog_id, $user_id = 0 ) {
 
+	/**
+	 * Filters whether or not a blog is globally trackable.
+	 *
+	 * @since 1.7.0
+	 *
+	 * @param bool $value Whether or not trackable.
+	 * @param int  $blog_id Current blog ID.
+	 */
 	$trackable_globally = apply_filters( 'bp_blogs_is_blog_trackable', bp_blogs_is_blog_recordable( $blog_id, $user_id ), $blog_id );
 
 	if ( !empty( $user_id ) ) {
+
+		/**
+		 * Filters whether or not a blog is globally trackable for user.
+		 *
+		 * @since 1.7.0
+		 *
+		 * @param bool $value   Whether or not trackable.
+		 * @param int  $blog_id Current blog ID.
+		 * @param int  $user_id Current user ID.
+		 */
 		$trackable_for_user = apply_filters( 'bp_blogs_is_blog_trackable_for_user', $trackable_globally, $blog_id, $user_id );
 	} else {
 		$trackable_for_user = $trackable_globally;
@@ -299,7 +341,7 @@ function bp_blogs_is_blog_trackable( $blog_id, $user_id = 0 ) {
  * @param int  $user_id     ID of the user for whom the blog is being recorded.
  * @param bool $no_activity Optional. Whether to skip recording an activity
  *                          item about this blog creation. Default: false.
- * @return bool|null Returns false on failure.
+ * @return false|null Returns false on failure.
  */
 function bp_blogs_record_blog( $blog_id, $user_id, $no_activity = false ) {
 
@@ -320,6 +362,7 @@ function bp_blogs_record_blog( $blog_id, $user_id, $no_activity = false ) {
 	$description     = get_blog_option( $blog_id, 'blogdescription' );
 	$close_old_posts = get_blog_option( $blog_id, 'close_comments_for_old_posts' );
 	$close_days_old  = get_blog_option( $blog_id, 'close_comments_days_old' );
+	$moderation      = get_blog_option( $blog_id, 'comment_moderation' );
 
 	$thread_depth = get_blog_option( $blog_id, 'thread_comments' );
 	if ( ! empty( $thread_depth ) ) {
@@ -342,8 +385,17 @@ function bp_blogs_record_blog( $blog_id, $user_id, $no_activity = false ) {
 	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'close_comments_for_old_posts', $close_old_posts );
 	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'close_comments_days_old', $close_days_old );
 	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'thread_comments_depth', $thread_depth );
+	bp_blogs_update_blogmeta( $recorded_blog->blog_id, 'comment_moderation', $moderation );
 
 	$is_private = !empty( $_POST['blog_public'] ) && (int) $_POST['blog_public'] ? false : true;
+
+	/**
+	 * Filters whether or not a new blog is public.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param bool $is_private Whether or not blog is public.
+	 */
 	$is_private = !apply_filters( 'bp_is_new_blog_public', !$is_private );
 
 	/**
@@ -476,6 +528,19 @@ function bp_blogs_update_option_thread_comments_depth( $oldvalue, $newvalue ) {
 add_action( 'update_option_thread_comments_depth', 'bp_blogs_update_option_thread_comments_depth', 10, 2 );
 
 /**
+ * When updating comment moderation, mirror value in blogmeta table.
+ *
+ * @since 3.0.0
+ *
+ * @param string $oldvalue Value before save. Passed by do_action() but unused here.
+ * @param string $newvalue Value to change meta to.
+ */
+function bp_blogs_update_option_comment_moderation( $oldvalue, $newvalue ) {
+	bp_blogs_update_blogmeta( $GLOBALS['wpdb']->blogid, 'comment_moderation', $newvalue );
+}
+add_action( 'update_option_comment_moderation', 'bp_blogs_update_option_comment_moderation', 10, 2 );
+
+/**
  * Syncs site icon URLs to blogmeta.
  *
  * @since 2.7.0
@@ -498,8 +563,9 @@ add_action( 'update_option_site_icon', 'bp_blogs_update_option_site_icon', 10, 2
 /**
  * Deletes the 'url' blogmeta for a site.
  *
- * Hooked to 'refresh_blog_details', which is notably used when editing a site
- * under "Network Admin > Sites".
+ * Fires when a site's details are updated, which generally happens when
+ * editing a site under "Network Admin > Sites". Prior to WP 4.9, the
+ * correct hook was 'refresh_blog_details'; afterward, 'clean_site_cache'.
  *
  * @since 2.3.0
  *
@@ -508,7 +574,12 @@ add_action( 'update_option_site_icon', 'bp_blogs_update_option_site_icon', 10, 2
 function bp_blogs_delete_url_blogmeta( $site_id = 0 ) {
 	bp_blogs_delete_blogmeta( (int) $site_id, 'url' );
 }
-add_action( 'refresh_blog_details', 'bp_blogs_delete_url_blogmeta' );
+
+if ( function_exists( 'wp_switch_roles_and_user' ) ) {
+	add_action( 'clean_site_cache', 'bp_blogs_delete_url_blogmeta' );
+} else {
+	add_action( 'refresh_blog_details', 'bp_blogs_delete_url_blogmeta' );
+}
 
 /**
  * Record activity metadata about a published blog post.
@@ -644,7 +715,7 @@ add_action( 'bp_activity_post_type_updated', 'bp_blogs_update_post_activity_meta
  * @param  WP_Comment|null $comment              The comment object.
  * @param  array           $activity_args        Array of activity arguments.
  * @param  object|null     $activity_post_object The post type tracking args object.
- * @return int|bool Returns false if no activity, the activity id otherwise.
+ * @return WP_Error|bool|int Returns false if no activity, the activity id otherwise.
  */
 function bp_blogs_comment_sync_activity_comment( &$activity_id, $comment = null, $activity_args = array(), $activity_post_object = null ) {
 	if ( empty( $activity_args ) || empty( $comment->post->ID ) || empty( $activity_post_object->comment_action_id ) ) {
@@ -784,7 +855,7 @@ add_action( 'bp_activity_post_type_comment', 'bp_blogs_comment_sync_activity_com
  * @param int         $user_id The ID of the user.
  * @param string|bool $role    User's WordPress role for this blog ID.
  * @param int         $blog_id Blog ID user is being added to.
- * @return bool|null False on failure.
+ * @return false|null False on failure.
  */
 function bp_blogs_add_user_to_blog( $user_id, $role = false, $blog_id = 0 ) {
 	global $wpdb;
@@ -844,6 +915,14 @@ add_action( 'user_register',    'bp_blogs_add_user_to_blog'        );
  * @return string
  */
 function bp_blogs_get_allowed_roles() {
+
+	/**
+	 * Filters the allowed roles a member must have to be recorded into bp_user_blogs pointer table.
+	 *
+	 * @since 2.1.0
+	 *
+	 * @param array $value Array of potential roles user needs.
+	 */
 	return apply_filters( 'bp_blogs_get_allowed_roles', array( 'contributor', 'author', 'editor', 'administrator' ) );
 }
 
