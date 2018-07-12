@@ -2150,6 +2150,7 @@ body.register #buddypress div.page ul {
 	overflow: visible;
 	text-decoration: none;
 	z-index: 999;
+	display:none;
 }
 
 #group-admins .bp-tooltip:after,
