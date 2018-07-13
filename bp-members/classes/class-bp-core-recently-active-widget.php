@@ -85,6 +85,7 @@ class BP_Core_Recently_Active_Widget extends WP_Widget {
 				<?php while ( bp_members() ) : bp_the_member(); ?>
 
 					<div class="item-avatar">
+					    <!-- // XTEC ************ Added tittle tag with element name - 2018.07.13 @nacho -->
 						<a href="<?php bp_member_permalink(); ?>" class="bp-tooltip" title="<?php bp_member_name(); ?>" data-bp-tooltip="<?php bp_member_name(); ?>"><?php bp_member_avatar(); ?></a>
 					</div>
 

@@ -131,6 +131,7 @@ class BP_Groups_Widget extends WP_Widget {
 				<?php while ( bp_groups() ) : bp_the_group(); ?>
 					<li <?php bp_group_class(); ?>>
 						<div class="item-avatar">
+						    <!-- // XTEC ************ Added tittle tag with element name - 2018.07.13 @nacho -->
 							<a href="<?php bp_group_permalink() ?>" class="bp-tooltip" title="<?php bp_group_name(); ?>" data-bp-tooltip="<?php bp_group_name() ?>"><?php bp_group_avatar_thumb() ?></a>
 						</div>
 

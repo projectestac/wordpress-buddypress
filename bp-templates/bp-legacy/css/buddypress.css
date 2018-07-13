@@ -2142,6 +2142,7 @@ body.register #buddypress div.page ul {
 	z-index: 998;
 }
 
+/* XTEC ************ Modified the visibility of the item bp-tooltip:hover - 2018.07.13 @nacho */
 .bp-tooltip:hover:after,
 .bp-tooltip:active:after,
 .bp-tooltip:focus:after {
