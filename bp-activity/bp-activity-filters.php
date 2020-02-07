@@ -13,9 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /* Filters *******************************************************************/
 
 // Apply WordPress defined filters.
-add_filter( 'bp_get_activity_action',                'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_content_body',          'bp_activity_filter_kses', 1 );
-add_filter( 'bp_get_activity_content',               'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_parent_content',        'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_latest_update',         'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_latest_update_excerpt', 'bp_activity_filter_kses', 1 );
@@ -205,6 +203,14 @@ function bp_activity_check_blacklist_keys( $activity ) {
  * @return string $content Filtered activity content.
  */
 function bp_activity_filter_kses( $content ) {
+	$activity_allowedtags = bp_get_allowedtags();
+
+	// Don't allow 'class' or 'id'.
+	foreach ( $activity_allowedtags as $el => &$atts ) {
+		unset( $atts['class'] );
+		unset( $atts['id'] );
+	}
+
 	/**
 	 * Filters the allowed HTML tags for BuddyPress Activity content.
 	 *
@@ -212,7 +218,7 @@ function bp_activity_filter_kses( $content ) {
 	 *
 	 * @param array $value Array of allowed HTML tags and attributes.
 	 */
-	$activity_allowedtags = apply_filters( 'bp_activity_allowed_tags', bp_get_allowedtags() );
+	$activity_allowedtags = apply_filters( 'bp_activity_allowed_tags', $activity_allowedtags );
 	return wp_kses( $content, $activity_allowedtags );
 }
 
@@ -812,14 +818,16 @@ add_filter( 'bp_activity_set_mentions_scope_args', 'bp_activity_filter_mentions_
  * Registers Activity personal data exporter.
  *
  * @since 4.0.0
+ * @since 5.0.0 adds an `exporter_bp_friendly_name` param to exporters.
  *
  * @param array $exporters  An array of personal data exporters.
  * @return array An array of personal data exporters.
  */
 function bp_activity_register_personal_data_exporter( $exporters ) {
 	$exporters['buddypress-activity'] = array(
-		'exporter_friendly_name' => __( 'BuddyPress Activity Data', 'buddypress' ),
-		'callback'               => 'bp_activity_personal_data_exporter',
+		'exporter_friendly_name'    => __( 'BuddyPress Activity Data', 'buddypress' ),
+		'callback'                  => 'bp_activity_personal_data_exporter',
+		'exporter_bp_friendly_name' => _x( 'Activity Data', 'BuddyPress Activity data exporter friendly name', 'buddypress' ),
 	);
 
 	return $exporters;

@@ -435,29 +435,6 @@ function bp_core_get_admin_tabs( $active_tab = '' ) {
 		),
 	);
 
-// XTEC ************ AFEGIT - Removed tabs in Settings > BuddyPress. Actual access to tabs is 
-//                            blocked in theme. This removal is to avoid admins seeing something 
-//                            where they cannot access.
-// 2014.09.10 @aginard
-
-    if (!is_xtecadmin()) {
-        unset($tabs[1]); // Pages tab
-    }
-
-//************ FI
-
-	// If forums component is active, add additional tab.
-	if ( bp_is_active( 'forums' ) && class_exists( 'BP_Forums_Component' ) ) {
-
-		// Enqueue thickbox.
-		wp_enqueue_script( 'thickbox' );
-		wp_enqueue_style( 'thickbox' );
-
-		$tabs['3'] = array(
-			'href' => bp_get_admin_url( add_query_arg( array( 'page' => 'bb-forums-setup'  ), 'admin.php' ) ),
-			'name' => __( 'Forums', 'buddypress' )
-		);
-	}
 	/**
 	 * Filters the tab data used in our wp-admin screens.
 	 *
@@ -1158,3 +1135,46 @@ function bp_core_admin_body_classes( $classes ) {
 	return $classes . ' buddypress';
 }
 add_filter( 'admin_body_class', 'bp_core_admin_body_classes' );
+
+/**
+ * Adds a BuddyPress category to house BuddyPress blocks.
+ *
+ * @since 5.0.0
+ *
+ * @param array   $categories Array of block categories.
+ * @param object  $post       Post being loaded.
+ */
+function bp_block_category( $categories = array(), $post = null ) {
+	if ( ! ( $post instanceof WP_Post ) ) {
+		return $categories;
+	}
+
+	/**
+	 * Filter here to add/remove the supported post types for the BuddyPress blocks category.
+	 *
+	 * @since 5.0.0
+	 *
+	 * @param array $value The list of supported post types. Defaults to WordPress built-in ones.
+	 */
+	$post_types = apply_filters( 'bp_block_category_post_types', array( 'post', 'page' ) );
+
+	if ( ! $post_types ) {
+		return $categories;
+	}
+
+	// Get the post type of the current item.
+	$post_type = get_post_type( $post );
+
+	if ( ! in_array( $post_type, $post_types, true ) ) {
+		return $categories;
+	}
+
+	return array_merge( $categories, array(
+		array(
+			'slug'  => 'buddypress',
+			'title' => __( 'BuddyPress', 'buddypress' ),
+			'icon'  => 'buddicons-buddypress-logo',
+		),
+	) );
+}
+add_filter( 'block_categories', 'bp_block_category', 1, 2 );

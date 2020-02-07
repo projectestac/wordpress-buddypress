@@ -1160,7 +1160,7 @@ jq(document).ready( function() {
 
 		settings_div.hide().removeClass( 'field-visibility-settings-open' )
 			.siblings( '.field-visibility-settings-toggle' )
-				.children( '.current-visibility-level' ).text( vis_setting_text ).end()
+				.find( '.current-visibility-level' ).text( vis_setting_text ).end()
 			.show().removeClass( 'field-visibility-settings-hide' );
 	} );
 
@@ -1869,7 +1869,7 @@ function bp_filter_request( object, filter, scope, target, search_terms, page, e
 	// Get directory preferences (called "cookie" for legacy reasons).
 	var cookies = {};
 	cookies['bp-' + object + '-filter'] = bp_get_directory_preference( object, 'filter' );
-	cookies['bp' + object + '-scope']   = bp_get_directory_preference( object, 'scope' );
+	cookies['bp-' + object + '-scope']  = bp_get_directory_preference( object, 'scope' );
 
 	var cookie = encodeURIComponent( jq.param( cookies ) );
 
