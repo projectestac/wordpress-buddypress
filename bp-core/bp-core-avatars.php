@@ -476,7 +476,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 	$legacy_group_avatar_name = ( 'full' == $params['type'] ) ? '-groupavatar-full' : '-groupavatar-thumb';
 
 	// Check for directory.
-	if ( file_exists( $avatar_folder_dir ) ) {
+	if ( ! $params['force_default'] && file_exists( $avatar_folder_dir ) ) {
 
 		// Open directory.
 		if ( $av_dir = opendir( $avatar_folder_dir ) ) {
@@ -637,6 +637,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 		// Custom Gravatar URL args.
 		if ( ! empty( $params['force_default'] ) ) {
 			$url_args['f'] = 'y';
+			$url_args['d'] = $params['default'];
 		}
 		if ( ! empty( $params['rating'] ) ) {
 			$url_args['r'] = strtolower( $params['rating'] );
@@ -653,7 +654,7 @@ function bp_core_fetch_avatar( $args = '' ) {
 		$default_grav = apply_filters( 'bp_core_avatar_default', $default_grav, $params );
 
 		// Only set default image if 'Gravatar Logo' is not requested.
-		if ( 'gravatar_default' !== $default_grav ) {
+		if ( ! $params['force_default'] && 'gravatar_default' !== $default_grav ) {
 			$url_args['d'] = $default_grav;
 		}
 
@@ -717,7 +718,6 @@ function bp_core_delete_existing_avatar( $args = '' ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args, EXTR_SKIP );
 
 	/**
 	 * Filters whether or not to handle deleting an existing avatar.
@@ -744,47 +744,61 @@ function bp_core_delete_existing_avatar( $args = '' ) {
 		return true;
 	}
 
-	if ( empty( $item_id ) ) {
-		if ( 'user' == $object )
-			$item_id = bp_displayed_user_id();
-		elseif ( 'group' == $object )
-			$item_id = buddypress()->groups->current_group->id;
-		elseif ( 'blog' == $object )
-			$item_id = $current_blog->id;
+	if ( empty( $args['item_id'] ) ) {
+		if ( 'user' === $args['object'] ) {
+			$args['item_id'] = bp_displayed_user_id();
+		} elseif ( 'group' === $args['object'] ) {
+			$args['item_id'] = buddypress()->groups->current_group->id;
+		} elseif ( 'blog' === $args['object'] ) {
+			$args['item_id'] = $current_blog->id;
+		}
 
 		/** This filter is documented in bp-core/bp-core-avatars.php */
-		$item_id = apply_filters( 'bp_core_avatar_item_id', $item_id, $object );
-
-		if ( !$item_id ) return false;
+		$item_id = apply_filters( 'bp_core_avatar_item_id', $args['item_id'], $args['object'] );
+	} else {
+		$item_id = $args['item_id'];
 	}
 
-	if ( empty( $avatar_dir ) ) {
-		if ( 'user' == $object )
-			$avatar_dir = 'avatars';
-		elseif ( 'group' == $object )
-			$avatar_dir = 'group-avatars';
-		elseif ( 'blog' == $object )
-			$avatar_dir = 'blog-avatars';
+	if ( $item_id && ( ctype_digit( $item_id ) || is_int( $item_id ) ) ) {
+		$item_id = (int) $item_id;
+	} else {
+		return false;
+	}
+
+	if ( empty( $args['avatar_dir'] ) ) {
+		if ( 'user' === $args['object'] ) {
+			$args['avatar_dir'] = 'avatars';
+		} elseif ( 'group' === $args['object'] ) {
+			$args['avatar_dir'] = 'group-avatars';
+		} elseif ( 'blog' === $args['object'] ) {
+			$args['avatar_dir'] = 'blog-avatars';
+		}
 
 		/** This filter is documented in bp-core/bp-core-avatars.php */
-		$avatar_dir = apply_filters( 'bp_core_avatar_dir', $avatar_dir, $object );
+		$avatar_dir = apply_filters( 'bp_core_avatar_dir', $args['avatar_dir'], $args['object'] );
+	} else {
+		$avatar_dir = $args['avatar_dir'];
+	}
 
-		if ( !$avatar_dir ) return false;
+	if ( ! $avatar_dir ) {
+		return false;
 	}
 
 	/** This filter is documented in bp-core/bp-core-avatars.php */
-	$avatar_folder_dir = apply_filters( 'bp_core_avatar_folder_dir', bp_core_avatar_upload_path() . '/' . $avatar_dir . '/' . $item_id, $item_id, $object, $avatar_dir );
+	$avatar_folder_dir = apply_filters( 'bp_core_avatar_folder_dir', bp_core_avatar_upload_path() . '/' . $avatar_dir . '/' . $item_id, $item_id, $args['object'], $avatar_dir );
 
-	if ( !file_exists( $avatar_folder_dir ) )
+	if ( ! is_dir( $avatar_folder_dir ) ) {
 		return false;
+	}
 
 	if ( $av_dir = opendir( $avatar_folder_dir ) ) {
-		while ( false !== ( $avatar_file = readdir($av_dir) ) ) {
-			if ( ( preg_match( "/-bpfull/", $avatar_file ) || preg_match( "/-bpthumb/", $avatar_file ) ) && '.' != $avatar_file && '..' != $avatar_file )
+		while ( false !== ( $avatar_file = readdir( $av_dir ) ) ) {
+			if ( ( preg_match( "/-bpfull/", $avatar_file ) || preg_match( "/-bpthumb/", $avatar_file ) ) && '.' != $avatar_file && '..' != $avatar_file ) {
 				@unlink( $avatar_folder_dir . '/' . $avatar_file );
+			}
 		}
 	}
-	closedir($av_dir);
+	closedir( $av_dir );
 
 	@rmdir( $avatar_folder_dir );
 
