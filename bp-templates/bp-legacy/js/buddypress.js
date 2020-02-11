@@ -30,7 +30,12 @@ jq(document).ready( function() {
 	if ( $whats_new.length && bp_get_querystring('r') ) {
 		var $member_nicename = $whats_new.val();
 
+		// XTEC ************ ELIMINAT - Disable slideDown
+		// 2020-02-11 @jmeler
+		/*
 		jq('#whats-new-options').slideDown();
+		*/
+		//************ FI
 
 		$whats_new.animate({
 			height:'3.8em'
@@ -43,18 +48,29 @@ jq(document).ready( function() {
 
 		$whats_new.val('').focus().val( $member_nicename );
 	} else {
+		// XTEC ************ ELIMINAT - Don't hide options
+		// 2020-02-11 @jmeler
+		/*
 		jq('#whats-new-options').hide();
+		*/
+		//************ FI
 	}
 
 	/**** Activity Posting ********************************************************/
 
 	/* Textarea focus */
 	$whats_new.focus( function(){
+
+		// XTEC ************ ELIMINAT - Disable slideDown
+		// 2020-02-11 @jmeler
+		/*
 		jq( '#whats-new-options' ).slideDown();
 
 		jq( this ).animate({
 			height:'3.8em'
 		});
+		*/
+		//************ FI
 
 		jq('#aw-whats-new-submit').prop('disabled', false);
 
@@ -95,11 +111,15 @@ jq(document).ready( function() {
 					return;
 				}
 
+				// XTEC ************ ELIMINAT - Disable slideUp
+				// 2020-02-11 @jmeler
+				/*
 				$whats_new.animate({
 					height:'2.2em'
 				});
-
 				jq( '#whats-new-options' ).slideUp();
+				*/
+				//************ FI
 
 				jq('#aw-whats-new-submit').prop( 'disabled', true );
 
