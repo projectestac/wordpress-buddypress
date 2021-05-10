@@ -23,7 +23,7 @@ do_action( 'bp_before_member_settings_template' ); ?>
 <?php
 //************ ORIGINAL
 /*
-    <form action="<?php echo bp_displayed_user_domain() . bp_get_settings_slug() . '/notifications'; ?>" method="post" class="standard-form" id="settings-form">
+<form action="<?php echo bp_displayed_user_domain() . bp_get_settings_slug() . '/notifications'; ?>" method="post" class="standard-form" id="settings-form">
 */
 //************ FI
 ?>

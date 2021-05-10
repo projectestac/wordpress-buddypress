@@ -117,6 +117,7 @@ jq(document).ready( function() {
 				$whats_new.animate({
 					height:'2.2em'
 				});
+
 				jq( '#whats-new-options' ).slideUp();
 				*/
 				//************ FI
