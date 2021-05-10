@@ -34,7 +34,7 @@ function bp_nouveau_get_blogs_directory_nav_items() {
 				'component' => 'blogs',
 				'slug'      => 'personal', // slug is used because BP_Core_Nav requires it, but it's the scope
 				'li_class'  => array(),
-				'link'      => bp_loggedin_user_domain() . bp_nouveau_get_component_slug( 'blogs' ),
+				'link'      => bp_loggedin_user_domain() . bp_get_blogs_slug(),
 				'text'      => __( 'My Sites', 'buddypress' ),
 				'count'     => $my_blogs_count,
 				'position'  => 15,

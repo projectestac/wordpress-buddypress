@@ -1,6 +1,5 @@
 /* jshint undef: false */
-/* @since 1.7.0 */
-/* @version 8.0.0 */
+/* @version 3.0.0 */
 /* Password Verify */
 ( function( $ ){
 	function check_pass_strength() {
@@ -42,9 +41,9 @@
 	}
 
 	// Bind check_pass_strength to keyup events in the password fields
-	$( function() {
-		$( '.password-entry' ).val( '' ).on( 'keyup', check_pass_strength );
-		$( '.password-entry-confirm' ).val( '' ).on( 'keyup', check_pass_strength );
+	$( document ).ready( function() {
+		$( '.password-entry' ).val( '' ).keyup( check_pass_strength );
+		$( '.password-entry-confirm' ).val( '' ).keyup( check_pass_strength );
 	});
 
 } )( jQuery );

@@ -89,9 +89,6 @@
 		elseif ( bp_is_user_notifications() ) :
 			bp_get_template_part( 'members/single/notifications' );
 
-		elseif ( bp_is_user_members_invitations() ) :
-			bp_get_template_part( 'members/single/invitations' );
-
 		elseif ( bp_is_user_settings() ) :
 			bp_get_template_part( 'members/single/settings' );
 

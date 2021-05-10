@@ -5,6 +5,8 @@
  * @package BuddyPress
  * @subpackage Core
  * @since 1.5.0
+ *
+ * @todo Deprecate BuddyBar functions.
  */
 
 // Exit if accessed directly.

@@ -1,8 +1,8 @@
-/* global BP_Uploader, _, Backbone */
+/* global bp, BP_Uploader, _, Backbone */
 
 window.bp = window.bp || {};
 
-( function( bp, $ ) {
+( function( exports, $ ) {
 
 	// Bail if not set.
 	if ( typeof BP_Uploader === 'undefined' ) {
@@ -679,4 +679,4 @@ window.bp = window.bp || {};
 
 	bp.Avatar.start();
 
-})( window.bp, jQuery );
+})( bp, jQuery );

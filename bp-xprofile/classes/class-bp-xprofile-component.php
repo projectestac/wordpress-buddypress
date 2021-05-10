@@ -410,8 +410,7 @@ class BP_XProfile_Component extends BP_Component {
 			'bp_xprofile_data',
 			'bp_xprofile_fields',
 			'bp_xprofile_groups',
-			'xprofile_meta',
-			'bp_user_mid',
+			'xprofile_meta'
 		) );
 
 		parent::setup_cache_groups();

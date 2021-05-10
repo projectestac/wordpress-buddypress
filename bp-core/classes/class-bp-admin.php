@@ -123,7 +123,6 @@ class BP_Admin {
 		require( $this->admin_dir . 'bp-core-admin-components.php' );
 		require( $this->admin_dir . 'bp-core-admin-slugs.php'      );
 		require( $this->admin_dir . 'bp-core-admin-tools.php'      );
-		require( $this->admin_dir . 'bp-core-admin-optouts.php'    );
 	}
 
 	/**
@@ -302,15 +301,6 @@ class BP_Admin {
 			'bp_core_admin_tools'
 		);
 
-		$hooks[] = add_submenu_page(
-			$tools_parent,
-			__( 'Manage Opt-outs', 'buddypress' ),
-			__( 'Manage Opt-outs', 'buddypress' ),
-			$this->capability,
-			'bp-optouts',
-			'bp_core_optouts_admin'
-		);
-
 		// For network-wide configs, add a link to (the root site's) Emails screen.
 		if ( is_network_admin() && bp_is_network_activated() ) {
 			$email_labels = bp_get_email_post_type_labels();
@@ -388,6 +378,17 @@ class BP_Admin {
 		add_settings_field( 'hide-loggedout-adminbar', __( 'Toolbar', 'buddypress' ), 'bp_admin_setting_callback_admin_bar', 'buddypress', 'bp_main' );
 		register_setting( 'buddypress', 'hide-loggedout-adminbar', 'intval' );
 
+		// Only show 'switch to Toolbar' option if the user chose to retain the BuddyBar during the 1.6 upgrade.
+		if ( (bool) bp_get_option( '_bp_force_buddybar', false ) ) {
+			// Load deprecated code if not available.
+			if ( ! function_exists( 'bp_admin_setting_callback_force_buddybar' ) ) {
+				require buddypress()->plugin_dir . 'bp-core/deprecated/2.1.php';
+			}
+
+			add_settings_field( '_bp_force_buddybar', __( 'Toolbar', 'buddypress' ), 'bp_admin_setting_callback_force_buddybar', 'buddypress', 'bp_main' );
+			register_setting( 'buddypress', '_bp_force_buddybar', 'bp_admin_sanitize_callback_force_buddybar' );
+		}
+
 		// Allow account deletion.
 		add_settings_field( 'bp-disable-account-deletion', __( 'Account Deletion', 'buddypress' ), 'bp_admin_setting_callback_account_deletion', 'buddypress', 'bp_main' );
 		register_setting( 'buddypress', 'bp-disable-account-deletion', 'intval' );
@@ -409,12 +410,6 @@ class BP_Admin {
 		if ( bp_is_active( 'members', 'cover_image' ) ) {
 			add_settings_field( 'bp-disable-cover-image-uploads', __( 'Cover Image Uploads', 'buddypress' ), 'bp_admin_setting_callback_cover_image_uploads', 'buddypress', 'bp_members' );
 			register_setting( 'buddypress', 'bp-disable-cover-image-uploads', 'intval' );
-		}
-
-		// Community Invitations.
-		if ( bp_is_active( 'members', 'invitations' ) ) {
-			add_settings_field( 'bp-enable-members-invitations', __( 'Invitations', 'buddypress' ), 'bp_admin_setting_callback_members_invitations', 'buddypress', 'bp_members' );
-			register_setting( 'buddypress', 'bp-enable-members-invitations', 'intval' );
 		}
 
 		/* XProfile Section **************************************************/
@@ -539,13 +534,6 @@ class BP_Admin {
 		// About and Credits pages.
 		remove_submenu_page( 'index.php', 'bp-about'   );
 		remove_submenu_page( 'index.php', 'bp-credits' );
-
-		// Nonmembers Opt-outs page.
-		if ( is_network_admin() ) {
-			remove_submenu_page( 'network-tools', 'bp-optouts' );
-		} else {
-			remove_submenu_page( 'tools.php', 'bp-optouts' );
-		}
 	}
 
 	/**

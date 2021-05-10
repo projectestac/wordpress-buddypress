@@ -24,8 +24,7 @@
 		opacity: 0.4;
 	}
 
-	#notification-bulk-manage[disabled],
-	#invitation-bulk-manage[disabled] {
+	#notification-bulk-manage[disabled] {
 		display: none;
 	}
 
@@ -400,9 +399,11 @@ body.no-js {
 
 	@include medium-small-up() {
 
-		.notifications-options-nav .select-wrap,
-		.invitations-options-nav .select-wrap {
-			float: left;
+		.notifications-options-nav {
+
+			.select-wrap {
+				float: left;
+			}
 		}
 	}
 }

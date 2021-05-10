@@ -1,4 +1,4 @@
-jQuery( function() {
+jQuery(document).ready( function() {
 	member_widget_click_handler();
 
 	// WP 4.5 - Customizer selective refresh support.

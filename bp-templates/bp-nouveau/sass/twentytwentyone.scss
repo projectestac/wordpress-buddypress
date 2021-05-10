@@ -221,14 +221,12 @@ Hello, this is the BP Nouveau's Twenty Twenty-One companion stylesheet.
 		}
 	}
 
-	.notifications-options-nav,
-	.invitations-options-nav {
+	.notifications-options-nav {
 		margin-top: 1em;
-	}
 
-	.notifications-options-nav input#notification-bulk-manage,
-	.invitations-options-nav input#invitation-bulk-manage {
-		line-height: 1.2;
+		input#notification-bulk-manage {
+			line-height: 1.2;
+		}
 	}
 }
 

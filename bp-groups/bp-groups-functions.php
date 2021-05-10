@@ -1669,9 +1669,9 @@ function groups_delete_invite( $user_id, $group_id, $inviter_id = false ) {
  *     @type bool   $force_resend  Whether to resend the email & notification if one has already been sent.
  * }
  */
-function groups_send_invites( ...$args ) {
+function groups_send_invites( $args = array() ) {
 	// Backward compatibility with old method of passing arguments.
-	if ( ! is_array( $args[0] ) || count( $args ) > 1 ) {
+	if ( ! is_array( $args ) || func_num_args() > 1 ) {
 		_deprecated_argument( __METHOD__, '5.0.0', sprintf( __( 'Arguments passed to %1$s should be in an associative array. See the inline documentation at %2$s for more details.', 'buddypress' ), __METHOD__, __FILE__ ) );
 
 		$old_args_keys = array(
@@ -1679,9 +1679,7 @@ function groups_send_invites( ...$args ) {
 			1 => 'group_id',
 		);
 
-		$args = bp_core_parse_args_array( $old_args_keys, $args );
-	} else {
-		$args = reset( $args );
+		$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 	}
 
 	$r = bp_parse_args( $args, array(
@@ -2010,9 +2008,9 @@ function groups_remove_member( $user_id, $group_id ) {
  * }
  * @return bool True on success, false on failure.
  */
-function groups_send_membership_request( ...$args ) {
+function groups_send_membership_request( $args = array() ) {
 	// Backward compatibility with old method of passing arguments.
-	if ( ! is_array( $args[0] ) || count( $args ) > 1 ) {
+	if ( ! is_array( $args ) || func_num_args() > 1 ) {
 		_deprecated_argument( __METHOD__, '5.0.0', sprintf( __( 'Arguments passed to %1$s should be in an associative array. See the inline documentation at %2$s for more details.', 'buddypress' ), __METHOD__, __FILE__ ) );
 
 		$old_args_keys = array(
@@ -2020,9 +2018,7 @@ function groups_send_membership_request( ...$args ) {
 			1 => 'group_id',
 		);
 
-		$args = bp_core_parse_args_array( $old_args_keys, $args );
-	} else {
-		$args = reset( $args );
+		$args = bp_core_parse_args_array( $old_args_keys, func_get_args() );
 	}
 
 	$r = bp_parse_args( $args, array(
@@ -2044,7 +2040,7 @@ function groups_send_membership_request( ...$args ) {
 
 	// If a new request was created, send the emails.
 	if ( $request_id && is_int( $request_id ) ) {
-		$invites_class->send_request_notification_by_id( $request_id, $r );
+		$invites_class->send_request_notification_by_id( $request_id );
 		$admins = groups_get_group_admins( $r['group_id'] );
 
 		/**

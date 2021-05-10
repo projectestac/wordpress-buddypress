@@ -10,13 +10,7 @@
 ?>
 <div class="item-list-tabs no-ajax" id="subnav" aria-label="<?php esc_attr_e( 'Group secondary navigation', 'buddypress' ); ?>" role="navigation">
 	<ul>
-		<?php if ( bp_activity_is_feed_enable( 'group' ) ) : ?>
-			<li class="feed">
-				<a href="<?php bp_group_activity_feed_link(); ?>" class="bp-tooltip" data-bp-tooltip="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>" aria-label="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>">
-					<?php _e( 'RSS', 'buddypress' ); ?>
-				</a>
-			</li>
-		<?php endif; ?>
+		<li class="feed"><a href="<?php bp_group_activity_feed_link(); ?>" class="bp-tooltip" data-bp-tooltip="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>" aria-label="<?php esc_attr_e( 'RSS Feed', 'buddypress' ); ?>"><?php _e( 'RSS', 'buddypress' ); ?></a></li>
 
 		<?php
 

@@ -461,7 +461,7 @@ Controller = (function() {
 
   Controller.arrayToDefaultHash = function(data) {
     var i, item, len, results;
-    if (!Array.isArray(data)) {
+    if (!$.isArray(data)) {
       return data;
     }
     results = [];
@@ -628,9 +628,9 @@ TextareaController = (function(superClass) {
       iframe: this.app.iframe
     });
     if (!$inputor.is(':focus')) {
-      $inputor.trigger( 'focus' );
+      $inputor.focus();
     }
-    return $inputor.trigger( 'change' );
+    return $inputor.change();
   };
 
   return TextareaController;
@@ -976,7 +976,7 @@ View = (function() {
   };
 
   View.prototype.visible = function() {
-    return $.expr.pseudos.visible(this.$el[0]);
+    return $.expr.filters.visible(this.$el[0]);
   };
 
   View.prototype.highlighted = function() {
@@ -1092,7 +1092,7 @@ View = (function() {
 
   View.prototype.render = function(list) {
     var $li, $ul, i, item, len, li, tpl;
-    if (!(Array.isArray(list) && list.length > 0)) {
+    if (!($.isArray(list) && list.length > 0)) {
       this.hide();
       return;
     }

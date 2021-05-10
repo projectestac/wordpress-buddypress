@@ -39,8 +39,7 @@ class BP_Members_Component extends BP_Component {
 			buddypress()->plugin_dir,
 			array(
 				'adminbar_myaccount_order' => 20,
-				'search_query_arg'         => 'members_search',
-				'features'                 => array( 'invitations' )
+				'search_query_arg' => 'members_search',
 			)
 		);
 	}
@@ -65,8 +64,6 @@ class BP_Members_Component extends BP_Component {
 			'blocks',
 			'widgets',
 			'cache',
-			'invitations',
-			'notifications',
 		);
 
 		if ( bp_is_active( 'activity' ) ) {
@@ -140,21 +137,6 @@ class BP_Members_Component extends BP_Component {
 			// Theme compatibility.
 			new BP_Registration_Theme_Compat();
 		}
-
-		// Invitations.
-		if ( is_user_logged_in() && bp_is_user_members_invitations() ) {
-			// Actions.
-			if ( bp_is_post_request() ) {
-				require $this->path . 'bp-members/actions/invitations-bulk-manage.php';
-			}
-
-			// Screens.
-			if ( bp_is_user_members_invitations_list() ) {
-				require $this->path . 'bp-members/screens/list-invites.php';
-			} else {
-				require $this->path . 'bp-members/screens/send-invites.php';
-			}
-		}
 	}
 
 	/**
@@ -196,10 +178,8 @@ class BP_Members_Component extends BP_Component {
 			'global_tables'   => array(
 				'table_name_invitations'   => bp_core_get_table_prefix() . 'bp_invitations',
 				'table_name_last_activity' => bp_core_get_table_prefix() . 'bp_activity',
-				'table_name_optouts'       => bp_core_get_table_prefix() . 'bp_optouts',
 				'table_name_signups'       => $wpdb->base_prefix . 'signups', // Signups is a global WordPress table.
-			),
-			'notification_callback' => 'members_format_notifications',
+			)
 		);
 
 		parent::setup_globals( $args );
@@ -252,11 +232,6 @@ class BP_Members_Component extends BP_Component {
 			$bp->profile->slug = 'profile';
 			$bp->profile->id   = 'profile';
 		}
-
-		/** Network Invitations **************************************************
-		 */
-
-		$bp->members->invitations = new stdClass;
 	}
 
 	/**
@@ -339,7 +314,7 @@ class BP_Members_Component extends BP_Component {
 
 		$access       = bp_core_can_edit_settings();
 		$slug         = bp_get_profile_slug();
-		$profile_link = bp_get_members_component_link( buddypress()->profile->id );
+		$profile_link = bp_get_members_component_link( $slug );
 
 		// Change Avatar.
 		if ( buddypress()->avatar->show_avatars ) {
@@ -492,6 +467,7 @@ class BP_Members_Component extends BP_Component {
 			}
 		}
 
+
 		parent::setup_nav( $main_nav, $sub_nav );
 	}
 
@@ -567,25 +543,6 @@ class BP_Members_Component extends BP_Component {
 				'href'     => trailingslashit( $profile_link . 'change-cover-image' ),
 				'position' => 40
 			);
-		}
-
-		return $wp_admin_nav;
-	}
-
-	/**
-	 * Get the members invitations admin bar navs.
-	 *
-	 * @since 8.0.0
-	 *
-	 * @param  string $admin_bar_menu_id The Admin bar menu ID to attach sub items to.
-	 * @return array                     The members invitations admin navs.
-	 */
-	public function get_members_invitations_admin_navs( $admin_bar_menu_id = '' ) {
-		$wp_admin_nav = array();
-		$invite_link  = trailingslashit( bp_loggedin_user_domain() . bp_get_profile_slug() );
-
-		if ( ! $admin_bar_menu_id ) {
-			$admin_bar_menu_id = $this->id;
 		}
 
 		return $wp_admin_nav;
