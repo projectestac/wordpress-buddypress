@@ -21,9 +21,10 @@ function bp_core_admin_slugs_settings() {
 
 	<div class="wrap">
 
-		<h1><?php _e( 'BuddyPress Settings', 'buddypress' ); ?> </h1>
+		<h1 class="wp-heading-inline"><?php esc_html_e( 'BuddyPress Settings', 'buddypress' ); ?> </h1>
+		<hr class="wp-header-end">
 
-		<h2 class="nav-tab-wrapper"><?php bp_core_admin_tabs( __( 'Pages', 'buddypress' ) ); ?></h2>
+		<h2 class="nav-tab-wrapper"><?php bp_core_admin_tabs( esc_html__( 'Pages', 'buddypress' ) ); ?></h2>
 		<form action="" method="post" id="bp-admin-page-form">
 
 			<?php bp_core_admin_slugs_options(); ?>
@@ -110,7 +111,7 @@ function bp_core_admin_get_static_pages() {
  */
 function bp_core_admin_slugs_options() {
 
-	// Get the existing WP pages
+	// Get the existing WP pages.
 	$existing_pages = bp_core_get_directory_page_ids();
 
 	// Set up an array of components (along with component names) that have directory pages.
@@ -143,9 +144,12 @@ function bp_core_admin_slugs_options() {
 								'selected'         => !empty( $existing_pages[$name] ) ? $existing_pages[$name] : false
 							) ); ?>
 
-							<?php if ( !empty( $existing_pages[$name] ) ) : ?>
+							<?php if ( ! empty( $existing_pages[ $name ] ) && get_post( $existing_pages[ $name ] ) ) : ?>
 
-								<a href="<?php echo get_permalink( $existing_pages[$name] ); ?>" class="button-secondary" target="_bp"><?php _e( 'View', 'buddypress' ); ?></a>
+								<a href="<?php echo esc_url( get_permalink( $existing_pages[$name] ) ); ?>" class="button-secondary" target="_bp">
+									<?php _e( 'View', 'buddypress' ); ?> <span class="dashicons dashicons-external" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'buddypress' ); ?></span>
+								</a>
 
 							<?php endif; ?>
 
@@ -183,20 +187,30 @@ function bp_core_admin_slugs_options() {
 
 		<h3><?php _e( 'Registration', 'buddypress' ); ?></h3>
 
-		<?php if ( bp_get_signup_allowed() ) : ?>
+		<?php if ( bp_get_signup_allowed() || bp_get_members_invitations_allowed() ) : ?>
 			<p><?php _e( 'Associate WordPress Pages with the following BuddyPress Registration pages.', 'buddypress' ); ?></p>
 		<?php else : ?>
 			<?php if ( is_multisite() ) : ?>
-				<p><?php printf( __( 'Registration is currently disabled.  Before associating a page is allowed, please enable registration by selecting either the "User accounts may be registered" or "Both sites and user accounts can be registered" option on <a href="%s">this page</a>.', 'buddypress' ), network_admin_url( 'settings.php' ) ); ?></p>
+				<p>
+					<?php
+					/* translators: %s: the link to the Network settings page */
+					printf( __( 'Registration is currently disabled.  Before associating a page is allowed, please enable registration by selecting either the "User accounts may be registered" or "Both sites and user accounts can be registered" option on <a href="%s">this page</a>.', 'buddypress' ), network_admin_url( 'settings.php' ) );
+					?>
+				</p>
 			<?php else : ?>
-				<p><?php printf( __( 'Registration is currently disabled.  Before associating a page is allowed, please enable registration by clicking on the "Anyone can register" checkbox on <a href="%s">this page</a>.', 'buddypress' ), admin_url( 'options-general.php' ) ); ?></p>
+				<p>
+					<?php
+					/* translators: %s: the link to the Site settings page */
+					printf( __( 'Registration is currently disabled.  Before associating a page is allowed, please enable registration by clicking on the "Anyone can register" checkbox on <a href="%s">this page</a>.', 'buddypress' ), admin_url( 'options-general.php' ) );
+					?>
+				</p>
 			<?php endif; ?>
 		<?php endif; ?>
 
 		<table class="form-table">
 			<tbody>
 
-				<?php if ( bp_get_signup_allowed() ) : foreach ( $static_pages as $name => $label ) : ?>
+				<?php if ( bp_get_signup_allowed() || bp_get_members_invitations_allowed() ) : foreach ( $static_pages as $name => $label ) : ?>
 
 					<tr valign="top">
 						<th scope="row">
@@ -214,7 +228,7 @@ function bp_core_admin_slugs_options() {
 								'selected'         => !empty( $existing_pages[$name] ) ? $existing_pages[$name] : false
 							) ) ?>
 
-							<?php if ( !empty( $existing_pages[$name] ) ) : ?>
+							<?php if ( ! empty( $existing_pages[ $name ] ) && get_post( $existing_pages[ $name ] ) ) : ?>
 
 								<a href="<?php echo get_permalink( $existing_pages[$name] ); ?>" class="button-secondary" target="_bp"><?php _e( 'View', 'buddypress' ); ?></a>
 
