@@ -23,6 +23,33 @@ function bp_members_type_admin_menu() {
 		return;
 	}
 
+	// XTEC ************ MODIFICAT - Hiden type of members menu to all users but xtecadmin
+	// 2021.06.03 @nacho
+	if (is_xtec_super_admin()) {
+		if ( bp_is_network_activated() && ! bp_is_multiblog_mode() && is_network_admin() ) {
+			// Adds a users.php submenu to go to the root blog Member types screen.
+			$member_type_admin_url = add_query_arg( 'taxonomy', bp_get_member_type_tax_name(), get_admin_url( bp_get_root_blog_id(), 'edit-tags.php' ) );
+
+			add_submenu_page(
+				'users.php',
+				__( 'Member Types', 'buddypress' ),
+				__( 'Member Types', 'buddypress' ),
+				'bp_moderate',
+				esc_url( $member_type_admin_url )
+			);
+
+		} elseif ( ! is_network_admin() ) {
+			add_submenu_page(
+				'users.php',
+				__( 'Member Types', 'buddypress' ),
+				__( 'Member Types', 'buddypress' ),
+				'bp_moderate',
+				basename( add_query_arg( 'taxonomy', bp_get_member_type_tax_name(), bp_get_admin_url( 'edit-tags.php' ) ) )
+			);
+		}
+	}
+	//************ ORIGINAL
+	/*
 	if ( bp_is_network_activated() && ! bp_is_multiblog_mode() && is_network_admin() ) {
 		// Adds a users.php submenu to go to the root blog Member types screen.
 		$member_type_admin_url = add_query_arg( 'taxonomy', bp_get_member_type_tax_name(), get_admin_url( bp_get_root_blog_id(), 'edit-tags.php' ) );
@@ -44,6 +71,8 @@ function bp_members_type_admin_menu() {
 			basename( add_query_arg( 'taxonomy', bp_get_member_type_tax_name(), bp_get_admin_url( 'edit-tags.php' ) ) )
 		);
 	}
+	*/
+	//************ FI
 }
 add_action( 'bp_admin_menu', 'bp_members_type_admin_menu' );
 
