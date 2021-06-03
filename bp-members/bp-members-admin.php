@@ -23,7 +23,7 @@ function bp_members_type_admin_menu() {
 		return;
 	}
 
-	// XTEC ************ MODIFICAT - Hiden type of members menu to all users but xtecadmin
+	// XTEC ************ AFEGIT - Hiden type of members menu to all users but xtecadmin
 	// 2021.05.28 @nacho
 	if (is_xtec_super_admin()) {
 		if ( bp_is_network_activated() && ! bp_is_multiblog_mode() && is_network_admin() ) {
@@ -48,6 +48,7 @@ function bp_members_type_admin_menu() {
 			);
 		}
 	}
+	// *********FI
 }
 add_action( 'bp_admin_menu', 'bp_members_type_admin_menu' );
 
