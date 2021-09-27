@@ -21,7 +21,8 @@ TABLE OF CONTENTS:
 	3.1 Users List
 	3.2 Site Notices
 4.0 Emails - Edit page
-5.0 Plugins page
+5.0 Block Editor
+6.0 Plugins page
 ------------------------------------------------------------------------------*/
 
 /*------------------------------------------------------------------------------
@@ -306,6 +307,22 @@ TABLE OF CONTENTS:
 	content: "";
 }
 
+body.tools-php .bp-tools dt {
+	font-size: 1.1em;
+	color: #646970;
+	font-weight: 600;
+	margin: 1em 0 0.5em 0;
+}
+
+body.tools-php .bp-tools dd {
+	margin: 0;
+}
+
+body.tools_page_bp-members-invitations .nav-tab-wrapper,
+body.tools_page_bp-optouts .nav-tab-wrapper {
+	margin-bottom: 1em;
+}
+
 /*
  * 2.4 Tooltips
  */
@@ -522,7 +539,14 @@ body.post-type-bp-email .categorydiv label {
 }
 
 /*------------------------------------------------------------------------------
- * 5.0 Plugins page
+ * 5.0 Block Editor
+ *----------------------------------------------------------------------------*/
+.block-editor-inserter__panel-header span.dashicons-buddicons-buddypress-logo {
+	color: #d84800;
+}
+
+/*------------------------------------------------------------------------------
+ * 6.0 Plugins page
  *----------------------------------------------------------------------------*/
 #buddypress-update.not-shiny .update-message {
 	border-left: 0;

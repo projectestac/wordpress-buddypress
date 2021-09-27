@@ -303,8 +303,8 @@ class BuddyPress {
 
 		/** Versions **********************************************************/
 
-		$this->version    = '7.3.0';
-		$this->db_version = 12385;
+		$this->version    = '9.1.1';
+		$this->db_version = 12850;
 
 		/** Loading ***********************************************************/
 
@@ -511,6 +511,8 @@ class BuddyPress {
 			require( $this->plugin_dir . 'bp-core/deprecated/4.0.php' );
 			require( $this->plugin_dir . 'bp-core/deprecated/6.0.php' );
 			require( $this->plugin_dir . 'bp-core/deprecated/7.0.php' );
+			require( $this->plugin_dir . 'bp-core/deprecated/8.0.php' );
+			require( $this->plugin_dir . 'bp-core/deprecated/9.0.php' );
 		}
 
 		// Load wp-cli module if PHP 5.6+.
@@ -597,6 +599,8 @@ class BuddyPress {
 			'BP_REST_Components_Endpoint'  => 'core',
 			'BP_REST_Attachments'          => 'core',
 			'BP_Admin_Types'               => 'core',
+			'BP_Optout'                    => 'core',
+			'BP_Optouts_List_Table'        => 'core',
 
 			'BP_Core_Friends_Widget'   => 'friends',
 			'BP_REST_Friends_Endpoint' => 'friends',
@@ -620,6 +624,8 @@ class BuddyPress {
 			'BP_REST_Attachments_Member_Avatar_Endpoint' => 'members',
 			'BP_REST_Attachments_Member_Cover_Endpoint'  => 'members',
 			'BP_REST_Signup_Endpoint'                    => 'members',
+			'BP_Members_Invitation_Manager'              => 'members',
+			'BP_Members_Invitations_Template'            => 'members',
 
 			'BP_REST_Messages_Endpoint' => 'messages',
 

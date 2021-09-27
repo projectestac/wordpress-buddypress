@@ -97,13 +97,13 @@ class BP_REST_Attachments_Blog_Avatar_Endpoint extends WP_REST_Controller {
 
 		// Set the requested args.
 		$requested_args = array(
-			'blog_id' => $request['id'],
+			'blog_id' => $request->get_param( 'id' ),
 			'no_grav' => $no_user_grav,
-			'html'    => (bool) $request['html'],
+			'html'    => (bool) $request->get_param( 'html' ),
 		);
 
-		if ( $request['alt'] ) {
-			$requested_args['alt'] = $request['alt'];
+		if ( ! empty( $request->get_param( 'alt' ) ) ) {
+			$requested_args['alt'] = $request->get_param( 'alt' );
 		}
 
 		if ( ! $no_user_grav ) {
@@ -172,7 +172,7 @@ class BP_REST_Attachments_Blog_Avatar_Endpoint extends WP_REST_Controller {
 			)
 		);
 
-		$this->blog = $this->blogs_endpoint->get_blog_object( $request['id'] );
+		$this->blog = $this->blogs_endpoint->get_blog_object( $request->get_param( 'id' ) );
 
 		if ( ! is_object( $this->blog ) ) {
 			$retval = new WP_Error(
@@ -220,7 +220,7 @@ class BP_REST_Attachments_Blog_Avatar_Endpoint extends WP_REST_Controller {
 			'thumb' => $avatar->thumb,
 		);
 
-		$context  = ! empty( $request['context'] ) ? $request['context'] : 'view';
+		$context  = ! empty( $request->get_param( 'context' ) ) ? $request->get_param( 'context' ) : 'view';
 		$data     = $this->add_additional_fields_to_object( $data, $request );
 		$data     = $this->filter_response_by_context( $data, $context );
 		$response = rest_ensure_response( $data );
@@ -245,34 +245,36 @@ class BP_REST_Attachments_Blog_Avatar_Endpoint extends WP_REST_Controller {
 	 * @return array
 	 */
 	public function get_item_schema() {
-		$schema = array(
-			'$schema'    => 'http://json-schema.org/draft-04/schema#',
-			'title'      => 'bp_attachments_blog_avatar',
-			'type'       => 'object',
-			'properties' => array(
-				'full'  => array(
-					'context'     => array( 'view', 'edit' ),
-					'description' => __( 'Full size of the image file.', 'buddypress' ),
-					'type'        => 'string',
-					'format'      => 'uri',
-					'readonly'    => true,
+		if ( is_null( $this->schema ) ) {
+			$this->schema = array(
+				'$schema'    => 'http://json-schema.org/draft-04/schema#',
+				'title'      => 'bp_attachments_blog_avatar',
+				'type'       => 'object',
+				'properties' => array(
+					'full'  => array(
+						'context'     => array( 'view', 'edit' ),
+						'description' => __( 'Full size of the image file.', 'buddypress' ),
+						'type'        => 'string',
+						'format'      => 'uri',
+						'readonly'    => true,
+					),
+					'thumb' => array(
+						'context'     => array( 'view', 'edit' ),
+						'description' => __( 'Thumb size of the image file.', 'buddypress' ),
+						'type'        => 'string',
+						'format'      => 'uri',
+						'readonly'    => true,
+					),
 				),
-				'thumb' => array(
-					'context'     => array( 'view', 'edit' ),
-					'description' => __( 'Thumb size of the image file.', 'buddypress' ),
-					'type'        => 'string',
-					'format'      => 'uri',
-					'readonly'    => true,
-				),
-			),
-		);
+			);
+		}
 
 		/**
 		 * Filters the blog avatar schema.
 		 *
-		 * @param string $schema The endpoint schema.
+		 * @param array $schema The endpoint schema.
 		 */
-		return apply_filters( 'bp_rest_attachments_blog_avatar_schema', $this->add_additional_fields_schema( $schema ) );
+		return apply_filters( 'bp_rest_attachments_blog_avatar_schema', $this->add_additional_fields_schema( $this->schema ) );
 	}
 
 	/**
