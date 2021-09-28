@@ -15,7 +15,18 @@ do_action( 'bp_before_member_settings_template' ); ?>
 	_e( 'Notification settings', 'buddypress' );
 ?></h2>
 
+<?php
+//XTEC ************ MODIFICAT ­ Added slash at the end of url
+//2019.12.09 @nacho
+?>
+<form action="<?php echo bp_displayed_user_domain() . bp_get_settings_slug() . '/notifications/'; ?>" method="post" class="standard-form" id="settings-form">
+<?php
+//************ ORIGINAL
+/*
 <form action="<?php echo bp_displayed_user_domain() . bp_get_settings_slug() . '/notifications'; ?>" method="post" class="standard-form" id="settings-form">
+*/
+//************ FI
+?>
 	<p><?php _e( 'Send an email notice when:', 'buddypress' ); ?></p>
 
 	<?php

@@ -165,7 +165,12 @@ function bp_dtheme_enqueue_scripts() {
 	}
 
 	// Enqueue the global JS - Ajax will not work without it
+	// XTEC ************ ELIMINAT - Removed loading of unexistent script file
+	// 2020.02.18 @aginard
+	/*
 	wp_enqueue_script( 'dtheme-ajax-js', get_template_directory_uri() . '/_inc/global.js', array( 'jquery' ), bp_get_version() );
+	*/
+	// ************ FI
 
 	// Add words that we need to use in JS to the end of the page so they can be translated and still used.
 	$params = array(
