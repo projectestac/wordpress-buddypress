@@ -240,12 +240,17 @@ jq( function() {
 				activity_last_recorded  = 0;
 			}
 
+			// XTEC ************ ELIMINAT - Don't hide update button after publish activity
+			// 2020-02-131 @aginard
+			/*
 			jq('#whats-new-options').slideUp();
 			jq('#whats-new-form textarea').animate({
 				height:'2.2em'
 			});
 			jq('#aw-whats-new-submit').prop('disabled', true).removeClass('loading');
 			jq( '#whats-new-content' ).removeClass( 'active' );
+			*/
+			//************ FI
 		});
 
 		return false;
