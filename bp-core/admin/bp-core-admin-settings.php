@@ -434,12 +434,29 @@ function bp_core_admin_settings_save() {
 		if ( isset( $wp_settings_fields['buddypress'] ) ) {
 			foreach ( (array) $wp_settings_fields['buddypress'] as $section => $settings ) {
 				foreach ( $settings as $setting_name => $setting ) {
+
+                    // XTEC ************ AFEGIT - Only xtecadmin user can change values to different options. Admin user only can change direct post into home page
+                    // 2016.06.20 @xaviernietosanchez
+                    if (is_xtecadmin() || $setting_name === 'bp-plugin-enabled-post-home') {
+                    // ************ FI
+
 					$value = isset( $_POST[ $setting_name ] ) ? $_POST[ $setting_name ] : '';
 
 					bp_update_option( $setting_name, $value );
+
+                    // XTEC ************ AFEGIT - Only xtecadmin user can change values to different options. Admin user only can change direct post into home page
+                    // 2016.06.20 @xaviernietosanchez
+                    }
+                    // ************ FI
+
 				}
 			}
 		}
+
+        // XTEC ************ AFEGIT - Only xtecadmin user can change values to different options.
+        // 2016.06.20 @xaviernietosanchez
+        if (is_xtecadmin()) {
+        // ************ FI
 
 		// Some legacy options are not registered with the Settings API, or are reversed in the UI.
 		$legacy_options = array(
@@ -472,6 +489,12 @@ function bp_core_admin_settings_save() {
 				bp_get_admin_url( 'admin.php' )
 			)
 		);
+
+        // XTEC ************ AFEGIT - Only xtecadmin user can change values to different options.
+        // 2016.06.20 @xaviernietosanchez
+        }
+        // ************ FI
+
 	}
 }
 add_action( 'bp_admin_init', 'bp_core_admin_settings_save', 100 );

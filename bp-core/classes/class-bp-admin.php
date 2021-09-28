@@ -481,6 +481,12 @@ class BP_Admin {
 
 		/* Core Section ******************************************************/
 
+        // XTEC ************ AFEGIT - Hidden setting options to all users except xtecadmin.
+        // 2016.06.21 @xaviernietosanchez
+        if (is_xtecadmin()) {
+        // ************ FI
+
+
 		// Add the Core section.
 		add_settings_section( 'bp_main', __( 'BuddyPress Core', 'buddypress' ), 'bp_admin_setting_callback_main_section', 'buddypress' );
 
@@ -595,6 +601,12 @@ class BP_Admin {
 				register_setting( 'buddypress', '_bp_enable_akismet', 'intval' );
 			}
 		}
+
+        // XTEC ************ AFEGIT - Hidden setting options to all users except xtecadmin
+        // 2016.06.21 @xaviernietosanchez
+        }
+        // ************ FI
+
 	}
 
 	/**

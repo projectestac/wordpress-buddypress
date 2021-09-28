@@ -28,8 +28,21 @@ do_action( 'bp_before_directory_activity' ); ?>
 	do_action( 'bp_before_directory_activity_content' );
 	?>
 
+	<?php
+	//XTEC ************ MODIFICAT - Check if allow post into home page
+	//2016.06.16 @xaviernietosanchez
+	?>
+	<?php if ( is_user_logged_in() && bp_get_option( 'bp-plugin-enabled-post-home' ) ) : ?>
+	<?php
+	//************ ORIGINAL
+	/*
+	?>
 	<?php if ( is_user_logged_in() ) : ?>
 
+	<?php
+	*/
+	//************ FI
+	?>
 		<?php bp_get_template_part( 'activity/post-form' ); ?>
 
 	<?php endif; ?>

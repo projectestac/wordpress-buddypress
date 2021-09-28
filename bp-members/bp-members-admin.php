@@ -63,7 +63,18 @@ function bp_members_type_admin_menu() {
 		);
 	}
 }
+
+// XTEC ************ MODIFICAT - Hidden menu option "type of members" to all users but xtecadmin
+// 2021.06.03 @nacho
+if (is_xtec_super_admin()) {
+// ************ FI
+
 add_action( 'bp_admin_menu', 'bp_members_type_admin_menu' );
+
+// XTEC ************ MODIFICAT - Hidden menu option "type of members" to all users but xtecadmin
+// 2021.06.03 @nacho
+}
+// ************ FI
 
 /**
  * Checks whether a member type already exists.
