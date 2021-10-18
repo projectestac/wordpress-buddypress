@@ -13,12 +13,26 @@ defined( 'ABSPATH' ) || exit;
 /* Filters *******************************************************************/
 
 // Apply WordPress defined filters.
+
+// XTEC ************ ELIMINAT - Removed filter that removes HTML content in activity stream before display content
+// 2021.10.05 @aginard
+/*
 add_filter( 'bp_get_activity_content_body',          'bp_activity_filter_kses', 1 );
+*/
+// ************ FI
+
 add_filter( 'bp_get_activity_parent_content',        'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_latest_update',         'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_latest_update_excerpt', 'bp_activity_filter_kses', 1 );
 add_filter( 'bp_get_activity_feed_item_description', 'bp_activity_filter_kses', 1 );
+
+// XTEC ************ ELIMINAT - Removed filter that removes HTML content in activity stream before save
+// 2021.10.05 @aginard
+/*
 add_filter( 'bp_activity_content_before_save',       'bp_activity_filter_kses', 1 );
+*/
+// ************ FI
+
 add_filter( 'bp_activity_action_before_save',        'bp_activity_filter_kses', 1 );
 add_filter( 'bp_activity_latest_update_content',     'bp_activity_filter_kses', 1 );
 
