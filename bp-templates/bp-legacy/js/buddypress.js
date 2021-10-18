@@ -173,12 +173,12 @@ jq( function() {
 
 		// XTEC ************ MODIFICAT - Get the data to be posted in the wall from the iframe
 		// 2021.10.05 @aginard
-		content = jq('#whats-new_ifr').contents().find('#tinymce').find('p').html();
+		var content = jq('#whats-new_ifr').contents().find('#tinymce').html();
 		//************ ORIGINAL
 		/*
 		content = jq('#whats-new').val();
 		*/
-		//************ FI
+		// ************ FI
 
 		firstrow = jq( '#buddypress ul.activity-list li' ).first();
 		activity_row = firstrow;
