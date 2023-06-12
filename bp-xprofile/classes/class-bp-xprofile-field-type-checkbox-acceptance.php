@@ -64,7 +64,7 @@ class BP_XProfile_Field_Type_Checkbox_Acceptance extends BP_XProfile_Field_Type 
 		 *
 		 * @since 8.0.0
 		 *
-		 * @param BP_XProfile_Field_Type_Checkbox_Acceptance $this Current instance of the Checkbox Acceptance field type.
+		 * @param BP_XProfile_Field_Type_Checkbox_Acceptance $field_type Current instance of the field type class.
 		 */
 		do_action( 'bp_xprofile_field_type_checkbox_acceptance', $this );
 
@@ -243,7 +243,12 @@ class BP_XProfile_Field_Type_Checkbox_Acceptance extends BP_XProfile_Field_Type 
 	 */
 	public function edit_field_options_html( array $args = array() ) {
 		$field_id            = (int) $this->field_obj->id;
-		$params              = wp_parse_args( $args, array( 'user_id' => bp_displayed_user_id() ) );
+		$params              = bp_parse_args(
+			$args,
+			array(
+				'user_id' => bp_displayed_user_id(),
+			)
+		);
 		$checkbox_acceptance = (int) maybe_unserialize( \BP_XProfile_ProfileData::get_value_byid( $field_id, $params['user_id'] ) );
 
 		if ( ! empty( $_POST[ 'field_' . $field_id ] ) ) {

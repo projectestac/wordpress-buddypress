@@ -55,7 +55,7 @@ class BP_Embed extends WP_Embed {
 		 *
 		 * @since 1.5.0
 		 *
-		 * @param BP_Embed $this Current instance of the BP_Embed. Passed by reference.
+		 * @param BP_Embed $embed Current instance of the BP_Embed. Passed by reference.
 		 */
 		do_action_ref_array( 'bp_core_setup_oembed', array( &$this ) );
 	}
@@ -80,7 +80,10 @@ class BP_Embed extends WP_Embed {
 			return '';
 
 		$rawattr = $attr;
-		$attr = wp_parse_args( $attr, wp_embed_defaults() );
+		$attr    = bp_parse_args(
+			$attr,
+			wp_embed_defaults()
+		);
 
 		// Use kses to convert & into &amp; and we need to undo this
 		// See https://core.trac.wordpress.org/ticket/11311.

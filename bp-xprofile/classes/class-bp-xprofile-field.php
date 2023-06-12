@@ -196,7 +196,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 8.0.0
 		 *
-		 * @param BP_XProfile_Field $this The xProfile field object.
+		 * @param BP_XProfile_Field $field The xProfile field object.
 		 */
 		do_action( 'bp_xprofile_field', $this );
 	}
@@ -366,7 +366,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 3.0.0
 		 *
-		 * @param BP_XProfile_Field $this        Current instance of the field being deleted. Passed by reference.
+		 * @param BP_XProfile_Field $field       Current instance of the field being deleted. Passed by reference.
 		 * @param bool              $delete_data Whether or not to delete data.
 		 */
 		do_action_ref_array( 'xprofile_field_before_delete', array( &$this, $delete_data ) );
@@ -391,7 +391,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 3.0.0
 		 *
-		 * @param BP_XProfile_Field $this        Current instance of the field being deleted. Passed by reference.
+		 * @param BP_XProfile_Field $field       Current instance of the field being deleted. Passed by reference.
 		 * @param bool              $delete_data Whether or not to delete data.
 		 */
 		do_action_ref_array( 'xprofile_field_after_delete', array( &$this, $delete_data ) );
@@ -432,7 +432,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param BP_XProfile_Field $this Current instance of the field being saved.
+		 * @param BP_XProfile_Field $field Current instance of the field being saved.
 		 */
 		do_action_ref_array( 'xprofile_field_before_save', array( $this ) );
 
@@ -483,20 +483,20 @@ class BP_XProfile_Field {
 				 *
 				 * @since 1.5.0
 				 *
-				 * @param string            $post_option Submitted option value.
-				 * @param BP_XProfile_Field $type        Current field type being saved for.
+				 * @param string $post_option Submitted option value.
+				 * @param string $type        Current field type being saved for.
 				 */
-				$options      = apply_filters( 'xprofile_field_options_before_save', $post_option,  $this->type );
+				$options = apply_filters( 'xprofile_field_options_before_save', $post_option, $this->type );
 
 				/**
 				 * Filters the default field option value before saved.
 				 *
 				 * @since 1.5.0
 				 *
-				 * @param string            $post_default Default option value.
-				 * @param BP_XProfile_Field $type         Current field type being saved for.
+				 * @param string $post_default Default option value.
+				 * @param string $type         Current field type being saved for.
 				 */
-				$defaults     = apply_filters( 'xprofile_field_default_before_save', $post_default, $this->type );
+				$defaults = apply_filters( 'xprofile_field_default_before_save', $post_default, $this->type );
 
 				$counter = 1;
 				if ( !empty( $options ) ) {
@@ -530,7 +530,7 @@ class BP_XProfile_Field {
 			 *
 			 * @since 1.0.0
 			 *
-			 * @param BP_XProfile_Field $this Current instance of the field being saved.
+			 * @param BP_XProfile_Field $field Current instance of the field being saved.
 			 */
 			do_action_ref_array( 'xprofile_field_after_save', array( $this ) );
 
@@ -561,19 +561,18 @@ class BP_XProfile_Field {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @global object $wpdb
+	 * @global BuddyPress $bp The one true BuddyPress instance.
+	 * @global wpdb $wpdb WordPress database object.
 	 *
-	 * @param bool $for_editing Whether or not the field is for editing.
+	 * @param bool $for_editing Whether or not the field is for editing. Default to false.
 	 * @return array
 	 */
 	public function get_children( $for_editing = false ) {
 		global $wpdb;
 
 		// This is done here so we don't have problems with sql injection.
-		if ( empty( $for_editing ) && ( 'asc' === $this->order_by ) ) {
-			$sort_sql = 'ORDER BY name ASC';
-		} elseif ( empty( $for_editing ) && ( 'desc' === $this->order_by ) ) {
-			$sort_sql = 'ORDER BY name DESC';
+		if ( empty( $for_editing ) && in_array( $this->order_by, array( 'asc', 'desc' ), true ) ) {
+			$sort_sql = sprintf( 'ORDER BY name %s', bp_esc_sql_order( $this->order_by ) );
 		} else {
 			$sort_sql = 'ORDER BY option_order ASC';
 		}
@@ -586,20 +585,19 @@ class BP_XProfile_Field {
 			$parent_id = $this->id;
 		}
 
-		$bp  = buddypress();
-		$sql = $wpdb->prepare( "SELECT * FROM {$bp->profile->table_name_fields} WHERE parent_id = %d AND group_id = %d {$sort_sql}", $parent_id, $this->group_id );
-
+		$bp       = buddypress();
+		$sql      = $wpdb->prepare( "SELECT * FROM {$bp->profile->table_name_fields} WHERE parent_id = %d AND group_id = %d {$sort_sql}", $parent_id, $this->group_id );
 		$children = $wpdb->get_results( $sql );
 
 		/**
 		 * Filters the found children for a field.
 		 *
 		 * @since 1.2.5
-		 * @since 3.0.0 Added the `$this` parameter.
+		 * @since 3.0.0 Added the `$field_object` parameter.
 		 *
-		 * @param object            $children    Found children for a field.
-		 * @param bool              $for_editing Whether or not the field is for editing.
-		 * @param BP_XProfile_Field $this        Field object
+		 * @param array             $children     Found children for a field.
+		 * @param bool              $for_editing  Whether or not the field is for editing.
+		 * @param BP_XProfile_Field $field_object BP_XProfile_Field Field object.
 		 */
 		return apply_filters( 'bp_xprofile_field_get_children', $children, $for_editing, $this );
 	}
@@ -741,7 +739,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 2.4.0
 		 *
-		 * @param BP_XProfile_Field $this Field object.
+		 * @param BP_XProfile_Field $field Current instance of the field.
 		 */
 		do_action( 'bp_xprofile_field_set_member_type', $this );
 
@@ -911,7 +909,7 @@ class BP_XProfile_Field {
 		 * @since 6.0.0
 		 *
 		 * @param bool              $do_autolink The autolink property of the field.
-		 * @param BP_XProfile_Field $this Field object.
+		 * @param BP_XProfile_Field $field       Current instance of the field.
 		 */
 		return apply_filters( 'bp_xprofile_field_do_autolink', $this->do_autolink, $this );
 	}
@@ -1319,7 +1317,7 @@ class BP_XProfile_Field {
 							 *
 							 * @since 2.2.0
 							 *
-							 * @param BP_XProfile_Field $this Current XProfile field.
+							 * @param BP_XProfile_Field $field Current instance of the field.
 							 */
 							do_action( 'xprofile_field_after_sidebarbox', $this ); ?>
 
@@ -1334,7 +1332,7 @@ class BP_XProfile_Field {
 							 *
 							 * @since 2.3.0
 							 *
-							 * @param BP_XProfile_Field $this Current XProfile field.
+							 * @param BP_XProfile_Field $field Current instance of the field.
 							 */
 							do_action( 'xprofile_field_before_contentbox', $this );
 
@@ -1349,7 +1347,7 @@ class BP_XProfile_Field {
 							 *
 							 * @since 2.2.0
 							 *
-							 * @param BP_XProfile_Field $this Current XProfile field.
+							 * @param BP_XProfile_Field $field Current instance of the field.
 							 */
 							do_action( 'xprofile_field_after_contentbox', $this ); ?>
 
@@ -1438,7 +1436,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 2.1.0
 		 *
-		 * @param BP_XProfile_Field $this Current XProfile field.
+		 * @param BP_XProfile_Field $field Current instance of the field.
 		 */
 		do_action( 'xprofile_field_before_submitbox', $this ); ?>
 
@@ -1455,7 +1453,7 @@ class BP_XProfile_Field {
 						 *
 						 * @since 2.1.0
 						 *
-						 * @param BP_XProfile_Field $this Current XProfile field.
+						 * @param BP_XProfile_Field $field Current instance of the field.
 						 */
 						do_action( 'xprofile_field_submitbox_start', $this ); ?>
 
@@ -1492,7 +1490,7 @@ class BP_XProfile_Field {
 		 *
 		 * @since 2.1.0
 		 *
-		 * @param BP_XProfile_Field $this Current XProfile field.
+		 * @param BP_XProfile_Field $field Current instance of the field.
 		 */
 		do_action( 'xprofile_field_after_submitbox', $this );
 	}
@@ -1760,7 +1758,7 @@ class BP_XProfile_Field {
 		?>
 
 		<div class="postbox" id="field-signup-position-metabox">
-			<h2><label for="default-visibility"><?php esc_html_e( 'Signups', 'buddypress' ); ?></label></h2>
+			<h2><?php esc_html_e( 'Signups', 'buddypress' ); ?></h2>
 			<div class="inside">
 				<div>
 					<ul>

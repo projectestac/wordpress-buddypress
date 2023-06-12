@@ -3,7 +3,7 @@
  * Common functions
  *
  * @since 3.0.0
- * @version 9.0.0
+ * @version 10.0.0
  */
 
 // Exit if accessed directly.
@@ -115,6 +115,10 @@ function bp_nouveau_ajax_querystring( $query_string, $object ) {
 	// To get newest activities.
 	if ( ! empty( $post_query['offset'] ) ) {
 		$qs[] = 'offset=' . intval( $post_query['offset'] );
+	}
+
+	if ( ! empty( $post_query['offset_lower'] ) ) {
+		$qs[] = 'offset_lower=' . intval( $post_query['offset_lower'] );
 	}
 
 	$object_search_text = bp_get_search_default_text( $object );
@@ -244,7 +248,7 @@ function bp_nouveau_wrapper( $args = array() ) {
 	 * We need to to this because bp_current_component() is using the component slugs which can differ
 	 * from the component ID.
 	 */
-	$current_component_id = bp_core_get_active_components( array( 'slug' => bp_current_component() ) );
+	$current_component_id = bp_core_get_active_components( array( 'id' => bp_current_component() ) );
 	if ( $current_component_id && 1 === count( $current_component_id ) ) {
 		$current_component_id = reset( $current_component_id );
 	} else {
@@ -759,6 +763,10 @@ function bp_nouveau_theme_cover_image( $params = array() ) {
 	$top_offset  = bp_core_avatar_full_height() - 10;
 	$left_offset = bp_core_avatar_full_width() + 20;
 
+	if ( ! bp_is_active( 'activity' ) || ! bp_activity_do_mentions() ) {
+		$top_offset -= 40;
+	}
+
 	$cover_image = isset( $params['cover_image'] ) ? 'background-image: url( ' . $params['cover_image'] . ' );' : '';
 	$hide_avatar_style = '';
 
@@ -1122,7 +1130,9 @@ function bp_nouveau_get_user_feedback( $feedback_id = '' ) {
 	/*
 	 * Adjust some messages to the context.
 	 */
-	if ( 'completed-confirmation' === $feedback_id && bp_registration_needs_activation() ) {
+	if ( 'completed-confirmation' === $feedback_id && bp_get_membership_requests_required() ) {
+		$feedback_messages['completed-confirmation']['message'] = __( 'You have successfully submitted your membership request! Our site moderators will review your submission and send you an activation email if your request is approved.', 'buddypress' );
+	} elseif ( 'completed-confirmation' === $feedback_id && bp_registration_needs_activation() ) {
 		$feedback_messages['completed-confirmation']['message'] = __( 'You have successfully created your account! To begin using this site you will need to activate your account via the email we have just sent to your address.', 'buddypress' );
 	} elseif ( 'member-notifications-none' === $feedback_id ) {
 		$is_myprofile = bp_is_my_profile();
@@ -1511,8 +1521,8 @@ function bp_nouveau_register_primary_nav_widget_block( $blocks = array() ) {
 			'wp-components',
 			'wp-i18n',
 			'wp-block-editor',
+			'wp-server-side-render',
 			'bp-block-data',
-			'bp-block-components',
 		),
 		'editor_style'       => 'bp-primary-nav-block',
 		'editor_style_url'   => $editor_style['uri'],
@@ -1552,10 +1562,6 @@ add_filter( 'bp_core_block_globals', 'bp_nouveau_register_core_block_globals', 1
  * @since 9.0.0
  */
 function bp_nouveau_unregister_blocks_for_post_context() {
-	if ( ! function_exists( 'unregister_block_type' ) ) {
-		return;
-	}
-
 	$is_registered = WP_Block_Type_Registry::get_instance()->is_registered( 'bp/primary-nav' );
 
 	if ( $is_registered ) {
@@ -1642,4 +1648,44 @@ function bp_nouveau_render_primary_nav_block( $attributes = array() ) {
 	}
 
 	return $widget_content;
+}
+
+/**
+ * Retuns the theme layout available widths.
+ *
+ * @since 10.0.0
+ *
+ * @return array The available theme layout widths.
+ */
+function bp_nouveau_get_theme_layout_widths() {
+	$layout_widths = array();
+
+	if ( current_theme_supports( 'align-wide' ) ) {
+		$layout_widths = array(
+			'alignnone' => __( 'Default width', 'buddypress' ),
+			'alignwide' => __( 'Wide width', 'buddypress' ),
+			'alignfull' => __( 'Full width', 'buddypress' ),
+		);
+	}
+
+	// `wp_get_global_settings()` has been introduced in WordPress 5.9
+	if ( function_exists( 'wp_get_global_settings' ) ) {
+		$theme_layouts = wp_get_global_settings( array( 'layout' ) );
+
+		if ( isset( $theme_layouts['wideSize'] ) && $theme_layouts['wideSize'] ) {
+			$layout_widths = array(
+				'alignnone' => __( 'Content width', 'buddypress' ),
+				'alignwide' => __( 'Wide width', 'buddypress' ),
+			);
+		}
+	}
+
+	/**
+	 * Filter here to edit the available theme layout widths.
+	 *
+	 * @since 10.0.0
+	 *
+	 * @param array $layout_widths The available theme layout widths.
+	 */
+	return apply_filters( 'bp_nouveau_get_theme_layout_widths', $layout_widths );
 }

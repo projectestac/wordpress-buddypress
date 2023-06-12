@@ -97,6 +97,8 @@ function bp_blogs_directory_permalink() {
 
 /**
  * Rewind the blogs and reset blog index.
+ *
+ * @global BP_Blogs_Template $blogs_template {@link BP_Blogs_Template}
  */
 function bp_rewind_blogs() {
 	global $blogs_template;
@@ -109,9 +111,15 @@ function bp_rewind_blogs() {
  *
  * Based on the $args passed, bp_has_blogs() populates the $blogs_template
  * global, enabling the use of BuddyPress templates and template functions to
- * display a list of activity items.
+ * display a list of blogs.
  *
- * @global object $blogs_template {@link BP_Blogs_Template}
+ * @since 1.0.0
+ * @since 1.2.0 Added $type, $page, $search_terms parameters
+ * @since 1.6.0 Added $page_arg parameter
+ * @since 2.0.0 Added $include_blog_ids, $update_meta_cache parameters
+ * @since 10.0.0 Added $date_query parameter
+ *
+ * @global BP_Blogs_Template $blogs_template {@link BP_Blogs_Template}
  *
  * @param array|string $args {
  *     Arguments for limiting the contents of the blogs loop. Most arguments
@@ -119,9 +127,6 @@ function bp_rewind_blogs() {
  *     the format of the arguments accepted here differs in a number of ways,
  *     and because bp_has_blogs() determines some default arguments in a
  *     dynamic fashion, we list all accepted arguments here as well.
- *
- *     Arguments can be passed as an associative array, or as a URL query
- *     string (eg, 'user_id=4&per_page=3').
  *
  *     @type int      $page             Which page of results to fetch. Using page=1 without
  *                                      per_page will result in no pagination. Default: 1.
@@ -133,12 +138,14 @@ function bp_rewind_blogs() {
  *     @type string   $type             The order in which results should be fetched.
  *                                      'active', 'alphabetical', 'newest', or 'random'.
  *     @type array    $include_blog_ids Array of blog IDs to limit results to.
- *     @type string   $sort             'ASC' or 'DESC'. Default: 'DESC'.
  *     @type string   $search_terms     Limit results by a search term. Default: the value of `$_REQUEST['s']` or
  *                                      `$_REQUEST['sites_search']`, if present.
  *     @type int      $user_id          The ID of the user whose blogs should be retrieved.
  *                                      When viewing a user profile page, 'user_id' defaults to the
  *                                      ID of the displayed user. Otherwise the default is false.
+ *     @type array    $date_query       Filter results by site last activity date. See first parameter of
+ *                                      {@link WP_Date_Query::__construct()} for syntax. Only applicable if
+ *                                      $type is either 'newest' or 'active'.
  * }
  * @return bool Returns true when blogs are found, otherwise false.
  */
@@ -155,17 +162,22 @@ function bp_has_blogs( $args = '' ) {
 	}
 
 	// Parse arguments.
-	$r = bp_parse_args( $args, array(
-		'type'              => 'active',
-		'page_arg'          => 'bpage', // See https://buddypress.trac.wordpress.org/ticket/3679.
-		'page'              => 1,
-		'per_page'          => 20,
-		'max'               => false,
-		'user_id'           => bp_displayed_user_id(), // Pass a user_id to limit to only blogs this user is a member of.
-		'include_blog_ids'  => false,
-		'search_terms'      => $search_terms_default,
-		'update_meta_cache' => true
-	), 'has_blogs' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'type'              => 'active',
+			'page_arg'          => 'bpage', // See https://buddypress.trac.wordpress.org/ticket/3679.
+			'page'              => 1,
+			'per_page'          => 20,
+			'max'               => false,
+			'user_id'           => bp_displayed_user_id(), // Pass a user_id to limit to only blogs this user is a member of.
+			'include_blog_ids'  => false,
+			'search_terms'      => $search_terms_default,
+			'date_query'        => false,
+			'update_meta_cache' => true,
+		),
+		'has_blogs'
+	);
 
 	// Set per_page to maximum if max is enforced.
 	if ( ! empty( $r['max'] ) && ( (int) $r['per_page'] > (int) $r['max'] ) ) {
@@ -173,7 +185,7 @@ function bp_has_blogs( $args = '' ) {
 	}
 
 	// Get the blogs.
-	$blogs_template = new BP_Blogs_Template( $r['type'], $r['page'], $r['per_page'], $r['max'], $r['user_id'], $r['search_terms'], $r['page_arg'], $r['update_meta_cache'], $r['include_blog_ids'] );
+	$blogs_template = new BP_Blogs_Template( $r );
 
 	/**
 	 * Filters whether or not there are blogs to list.
@@ -349,19 +361,23 @@ function bp_blog_avatar( $args = '' ) {
 		}
 
 		// Parse the arguments.
-		$r = bp_parse_args( $args, array(
-			'item_id'    => $blog_id,
-			'avatar_dir' => 'blog-avatars',
-			'object'     => 'blog',
-			'type'       => 'full',
-			'width'      => false,
-			'height'     => false,
-			'class'      => 'avatar',
-			'id'         => false,
-			'alt'        => $alt_attribute,
-			'no_grav'    => false,
-			'html'       => true,
-		), 'blog_avatar' );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'item_id'    => $blog_id,
+				'avatar_dir' => 'blog-avatars',
+				'object'     => 'blog',
+				'type'       => 'full',
+				'width'      => false,
+				'height'     => false,
+				'class'      => 'avatar',
+				'id'         => false,
+				'alt'        => $alt_attribute,
+				'no_grav'    => false,
+				'html'       => true,
+			),
+			'blog_avatar'
+		);
 
 		/**
 		 * If the `admin_user_id` was provided, make the Blog avatar
@@ -631,9 +647,12 @@ function bp_blog_last_active( $args = array() ) {
 		global $blogs_template;
 
 		// Parse the activity format.
-		$r = bp_parse_args( $args, array(
-			'active_format' => true
-		) );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'active_format' => true,
+			)
+		);
 
 		// Backwards compatibility for anyone forcing a 'true' active_format.
 		if ( true === $r['active_format'] ) {
@@ -687,9 +706,12 @@ function bp_blog_latest_post( $args = array() ) {
 	function bp_get_blog_latest_post( $args = array() ) {
 		global $blogs_template;
 
-		$r = wp_parse_args( $args, array(
-			'latest_format' => true,
-		) );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'latest_format' => true,
+			)
+		);
 
 		$retval = bp_get_blog_latest_post_title();
 
@@ -1504,7 +1526,7 @@ function bp_blog_create_nav_item() {
  */
 function bp_blog_backcompat_create_nav_item() {
 	// Bail if Blogs nav item is already used by bp-legacy.
-	if ( has_action( 'bp_blogs_directory_blog_types', 'bp_legacy_theme_blog_create_nav', 999 ) ) {
+	if ( has_action( 'bp_blogs_directory_blog_types', 'bp_legacy_theme_blog_create_nav' ) ) {
 		return;
 	}
 
@@ -1520,18 +1542,21 @@ add_action( 'bp_blogs_directory_blog_types', 'bp_blog_backcompat_create_nav_item
 /**
  * Output button for visiting a blog in a loop.
  *
- * @see bp_get_blogs_visit_blog_button() for description of arguments.
+ * @see bp_get_blogs_visit_blog_button_args() for description of arguments.
  *
- * @param array|string $args See {@link bp_get_blogs_visit_blog_button()}.
+ * @param array|string $args See {@link bp_get_blogs_visit_blog_button_args()}.
  */
 function bp_blogs_visit_blog_button( $args = '' ) {
 	echo bp_get_blogs_visit_blog_button( $args );
 }
+
 	/**
-	 * Return button for visiting a blog in a loop.
+	 * Return the arguments of the button for visiting a blog in a loop.
 	 *
 	 * @see BP_Button for a complete description of arguments and return
 	 *      value.
+	 *
+	 * @since 11.0.0
 	 *
 	 * @param array|string $args {
 	 *     Arguments are listed below, with their default values. For a
@@ -1544,31 +1569,55 @@ function bp_blogs_visit_blog_button( $args = '' ) {
 	 *     @type string $link_href         Permalink of the current blog in the loop.
 	 *     @type string $link_class        Default: 'blog-button visit'.
 	 *     @type string $link_text         Default: 'Visit Site'.
+	 *     @type string $link_title        Default: 'Visit Site'.
 	 * }
-	 * @return string The HTML for the Visit button.
+	 * @return array Thhe arguments of the button for visiting a blog in a loop.
 	 */
-	function bp_get_blogs_visit_blog_button( $args = '' ) {
-		$defaults = array(
-			'id'                => 'visit_blog',
-			'component'         => 'blogs',
-			'must_be_logged_in' => false,
-			'block_self'        => false,
-			'wrapper_class'     => 'blog-button visit',
-			'link_href'         => bp_get_blog_permalink(),
-			'link_class'        => 'blog-button visit',
-			'link_text'         => __( 'Visit Site', 'buddypress' ),
+	function bp_get_blogs_visit_blog_button_args( $args = '' ) {
+		$button_args = bp_parse_args(
+			$args,
+			array(
+				'id'                => 'visit_blog',
+				'component'         => 'blogs',
+				'must_be_logged_in' => false,
+				'block_self'        => false,
+				'wrapper_class'     => 'blog-button visit',
+				'link_href'         => bp_get_blog_permalink(),
+				'link_class'        => 'blog-button visit',
+				'link_text'         => __( 'Visit Site', 'buddypress' ),
+				'link_title'        => __( 'Visit Site', 'buddypress' ),
+			)
 		);
-
-		$button = wp_parse_args( $args, $defaults );
 
 		/**
 		 * Filters the button for visiting a blog in a loop.
 		 *
 		 * @since 1.2.10
 		 *
-		 * @param array $button Array of arguments to be used for the button to visit a blog.
+		 * @param array $button_args Array of arguments to be used for the button to visit a blog.
 		 */
-		return bp_get_button( apply_filters( 'bp_get_blogs_visit_blog_button', $button ) );
+		return (array) apply_filters( 'bp_get_blogs_visit_blog_button', $button_args );
+	}
+
+	/**
+	 * Return button for visiting a blog in a loop.
+	 *
+	 * @see BP_Button for a complete description of arguments and return
+	 *      value.
+	 *
+	 * @see bp_get_blogs_visit_blog_button_args() for description of arguments.
+	 *
+	 * @param array|string $args See {@link bp_get_blogs_visit_blog_button_args()}.
+	 * @return string The HTML for the Visit button.
+	 */
+	function bp_get_blogs_visit_blog_button( $args = '' ) {
+		$button_args = bp_get_blogs_visit_blog_button_args( $args );
+
+		if ( ! array_filter( $button_args ) ) {
+			return '';
+		}
+
+		return bp_get_button( $button_args );
 	}
 
 /** Stats **********************************************************************/
@@ -1596,13 +1645,17 @@ add_action( 'bp_members_admin_user_stats', 'bp_blogs_profile_stats', 9, 1 );
 function bp_blogs_get_profile_stats( $args = '' ) {
 
 	// Parse the args.
-	$r = bp_parse_args( $args, array(
-		'before'  => '<li class="bp-blogs-profile-stats">',
-		'after'   => '</li>',
-		'user_id' => bp_displayed_user_id(),
-		'blogs'   => 0,
-		'output'  => ''
-	), 'blogs_get_profile_stats' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'before'  => '<li class="bp-blogs-profile-stats">',
+			'after'   => '</li>',
+			'user_id' => bp_displayed_user_id(),
+			'blogs'   => 0,
+			'output'  => '',
+		),
+		'blogs_get_profile_stats'
+	);
 
 	// Allow completely overloaded output.
 	if ( is_multisite() && empty( $r['output'] ) ) {

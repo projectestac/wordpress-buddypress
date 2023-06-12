@@ -134,7 +134,7 @@ class BP_XProfile_Group {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param BP_XProfile_Group $this Current instance of the group being saved. Passed by reference.
+		 * @param BP_XProfile_Group $field_group Current instance of the field group being saved. Passed by reference.
 		 */
 		do_action_ref_array( 'xprofile_group_before_save', array( &$this ) );
 
@@ -165,7 +165,7 @@ class BP_XProfile_Group {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param BP_XProfile_Group $this Current instance of the group being saved. Passed by reference.
+		 * @param BP_XProfile_Group $field_group Current instance of the field group being saved. Passed by reference.
 		 */
 		do_action_ref_array( 'xprofile_group_after_save', array( &$this ) );
 
@@ -194,7 +194,7 @@ class BP_XProfile_Group {
 		 *
 		 * @since 2.0.0
 		 *
-		 * @param BP_XProfile_Group $this Current instance of the group being deleted. Passed by reference.
+		 * @param BP_XProfile_Group $field_group Current instance of the field group being deleted. Passed by reference.
 		 */
 		do_action_ref_array( 'xprofile_group_before_delete', array( &$this ) );
 
@@ -223,7 +223,7 @@ class BP_XProfile_Group {
 		 *
 		 * @since 2.0.0
 		 *
-		 * @param BP_XProfile_Group $this Current instance of the group being deleted. Passed by reference.
+		 * @param BP_XProfile_Group $field_group Current instance of the field group being deleted. Passed by reference.
 		 */
 		do_action_ref_array( 'xprofile_group_after_delete', array( &$this ) );
 
@@ -237,55 +237,61 @@ class BP_XProfile_Group {
 	 * and field data.
 	 *
 	 * @since 1.2.0
-	 * @since 2.4.0 Introduced `$member_type` argument.
-	 * @since 8.0.0 Introduced `$hide_field_types` & `$signup_fields_only` arguments.
+	 * @since 2.4.0  Introduced `$member_type` argument.
+	 * @since 8.0.0  Introduced `$hide_field_types` & `$signup_fields_only` arguments.
+	 * @since 11.0.0 `$profile_group_id` accepts an array of profile group ids.
 	 *
 	 * @global object $wpdb WordPress DB access object.
 	 *
 	 * @param array $args {
-	 *  Array of optional arguments:
-	 *      @type int          $profile_group_id   Limit results to a single profile group.
-	 *      @type int          $user_id            Required if you want to load a specific user's data.
-	 *                                             Default: displayed user's ID.
-	 *      @type array|string $member_type        Limit fields by those restricted to a given member type, or array of
-	 *                                             member types. If `$user_id` is provided, the value of `$member_type`
-	 *                                             will be overridden by the member types of the provided user. The
-	 *                                             special value of 'any' will return only those fields that are
-	 *                                             unrestricted by member type - i.e., those applicable to any type.
-	 *      @type bool         $hide_empty_groups  True to hide groups that don't have any fields. Default: false.
-	 *      @type bool         $hide_empty_fields  True to hide fields where the user has not provided data.
-	 *                                             Default: false.
-	 *      @type bool         $fetch_fields       Whether to fetch each group's fields. Default: false.
-	 *      @type bool         $fetch_field_data   Whether to fetch data for each field. Requires a $user_id.
-	 *                                             Default: false.
-	 *      @type int[]|bool   $exclude_groups     Comma-separated list or array of group IDs to exclude.
-	 *      @type int[]|bool   $exclude_fields     Comma-separated list or array of field IDs to exclude.
-	 *      @type string[]     $hide_field_types   List of field types to hide form loop. Default: empty array.
-	 *      @type bool         $signup_fields_only Whether to only return signup fields. Default: false.
-	 *      @type bool         $update_meta_cache  Whether to pre-fetch xprofilemeta for all retrieved groups, fields,
-	 *                                             and data. Default: true.
+	 *      Array of optional arguments.
+	 *
+	 *      @type int|int[]|bool $profile_group_id   Limit results to a single profile group or a comma-separated list or array of
+	 *                                               profile group ids. Default: false.
+	 *      @type int            $user_id            Required if you want to load a specific user's data.
+	 *                                               Default: displayed user's ID.
+	 *      @type array|string   $member_type        Limit fields by those restricted to a given member type, or array of
+	 *                                               member types. If `$user_id` is provided, the value of `$member_type`
+	 *                                               will be overridden by the member types of the provided user. The
+	 *                                               special value of 'any' will return only those fields that are
+	 *                                               unrestricted by member type - i.e., those applicable to any type.
+	 *      @type bool           $hide_empty_groups  True to hide groups that don't have any fields. Default: false.
+	 *      @type bool           $hide_empty_fields  True to hide fields where the user has not provided data.
+	 *                                               Default: false.
+	 *      @type bool           $fetch_fields       Whether to fetch each group's fields. Default: false.
+	 *      @type bool           $fetch_field_data   Whether to fetch data for each field. Requires a $user_id.
+	 *                                               Default: false.
+	 *      @type int[]|bool     $exclude_groups     Comma-separated list or array of group IDs to exclude.
+	 *      @type int[]|bool     $exclude_fields     Comma-separated list or array of field IDs to exclude.
+	 *      @type string[]       $hide_field_types   List of field types to hide form loop. Default: empty array.
+	 *      @type bool           $signup_fields_only Whether to only return signup fields. Default: false.
+	 *      @type bool           $update_meta_cache  Whether to pre-fetch xprofilemeta for all retrieved groups, fields,
+	 *                                               and data. Default: true.
 	 * }
-	 * @return array $groups
+	 * @return array
 	 */
 	public static function get( $args = array() ) {
 		global $wpdb;
 
 		// Parse arguments.
-		$r = wp_parse_args( $args, array(
-			'profile_group_id'       => false,
-			'user_id'                => bp_displayed_user_id(),
-			'member_type'            => false,
-			'hide_empty_groups'      => false,
-			'hide_empty_fields'      => false,
-			'fetch_fields'           => false,
-			'fetch_field_data'       => false,
-			'fetch_visibility_level' => false,
-			'exclude_groups'         => false,
-			'exclude_fields'         => false,
-			'hide_field_types'       => array(),
-			'update_meta_cache'      => true,
-			'signup_fields_only'     => false,
-		) );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'profile_group_id'       => false,
+				'user_id'                => bp_displayed_user_id(),
+				'member_type'            => false,
+				'hide_empty_groups'      => false,
+				'hide_empty_fields'      => false,
+				'fetch_fields'           => false,
+				'fetch_field_data'       => false,
+				'fetch_visibility_level' => false,
+				'exclude_groups'         => false,
+				'exclude_fields'         => false,
+				'hide_field_types'       => array(),
+				'update_meta_cache'      => true,
+				'signup_fields_only'     => false,
+			)
+		);
 
 		// Keep track of object IDs for cache-priming.
 		$object_ids = array(
@@ -459,12 +465,15 @@ class BP_XProfile_Group {
 	 * Gets group IDs, based on passed parameters.
 	 *
 	 * @since 5.0.0
+	 * @since 11.0.0 `$profile_group_id` accepts an array of profile group ids.
 	 *
 	 * @param array $args {
-	 *    Array of optional arguments:
-	 *    @type int   $profile_group_id  Limit results to a single profile group. Default false.
-	 *    @type array $exclude_groups    Comma-separated list or array of group IDs to exclude. Default false.
-	 *    @type bool  $hide_empty_groups True to hide groups that don't have any fields. Default: false.
+	 *    Array of optional arguments.
+	 *
+	 *    @type int|int[]|bool $profile_group_id  Limit results to a single profile group or a comma-separated list or array of
+	 *                                       profile group ids. Default: false.
+	 *    @type int[]          $exclude_groups    Comma-separated list or array of group IDs to exclude. Default: false.
+	 *    @type bool           $hide_empty_groups True to hide groups that don't have any fields. Default: false.
 	 * }
 	 * @return array
 	 */
@@ -482,8 +491,9 @@ class BP_XProfile_Group {
 
 		$bp = buddypress();
 
-		if ( ! empty( $r['profile_group_id'] ) ) {
-			$where_sql = $wpdb->prepare( 'WHERE g.id = %d', $r['profile_group_id'] );
+		if ( ! empty( $r['profile_group_id'] ) && ! is_bool( $r['profile_group_id'] ) ) {
+			$profile_group_ids = join( ',', wp_parse_id_list( $r['profile_group_id'] ) );
+			$where_sql         = "WHERE g.id IN ({$profile_group_ids})";
 		} elseif ( $r['exclude_groups'] ) {
 			$exclude   = join( ',', wp_parse_id_list( $r['exclude_groups'] ) );
 			$where_sql = "WHERE g.id NOT IN ({$exclude})";
@@ -900,7 +910,7 @@ class BP_XProfile_Group {
 							 *
 							 * @since 2.6.0
 							 *
-							 * @param BP_XProfile_Group $this Current XProfile group.
+							 * @param BP_XProfile_Group $field_group Current instance of the field group.
 							 */
 							do_action( 'xprofile_group_admin_after_description', $this ); ?>
 
@@ -915,7 +925,7 @@ class BP_XProfile_Group {
 							 *
 							 * @since 2.1.0
 							 *
-							 * @param BP_XProfile_Group $this Current XProfile group.
+							 * @param BP_XProfile_Group $field_group Current instance of the field group.
 							 */
 							do_action( 'xprofile_group_before_submitbox', $this ); ?>
 
@@ -935,7 +945,7 @@ class BP_XProfile_Group {
 											 *
 											 * @since 2.1.0
 											 *
-											 * @param BP_XProfile_Group $this Current XProfile group.
+											 * @param BP_XProfile_Group $field_group Current instance of the field group.
 											 */
 											do_action( 'xprofile_group_submitbox_start', $this ); ?>
 
@@ -963,7 +973,7 @@ class BP_XProfile_Group {
 							 *
 							 * @since 2.1.0
 							 *
-							 * @param BP_XProfile_Group $this Current XProfile group.
+							 * @param BP_XProfile_Group $field_group Current instance of the field group.
 							 */
 							do_action( 'xprofile_group_after_submitbox', $this ); ?>
 

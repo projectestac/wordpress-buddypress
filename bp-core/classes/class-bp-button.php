@@ -236,7 +236,10 @@ class BP_Button {
 	 */
 	public function __construct( $args = '' ) {
 
-		$r = wp_parse_args( $args, get_class_vars( __CLASS__ ) );
+		$r = bp_parse_args(
+			$args,
+			get_class_vars( __CLASS__ )
+		);
 
 		// Backward compatibility with deprecated parameters.
 		$r = $this->backward_compatibility_args( $r );
@@ -356,7 +359,7 @@ class BP_Button {
 		 * @since 2.7.0 Added $r as a parameter.
 		 *
 		 * @param string    $contents HTML being used for the button.
-		 * @param BP_Button $this     Current BP_Button instance.
+		 * @param BP_Button $button   Current BP_Button instance.
 		 * @param string    $before   HTML appended before the actual button.
 		 * @param string    $after    HTML appended after the actual button.
 		 * @param array     $r        Parsed button arguments.

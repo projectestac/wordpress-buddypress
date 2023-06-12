@@ -11,6 +11,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * BuddyPress Members endpoints.
  *
+ * /members/
+ * /members/{id}
+ *
  * @since 5.0.0
  */
 class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
@@ -39,7 +42,7 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 			$this->namespace,
 			'/' . $this->rest_base . '/(?P<id>[\d]+)',
 			array(
-				'args' => array(
+				'args'   => array(
 					'id' => array(
 						'description' => __( 'Unique identifier for the member.', 'buddypress' ),
 						'type'        => 'integer',
@@ -126,7 +129,20 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 			$args['include'] = false;
 		}
 
-		if ( empty( $request->get_param( 'xprofile' ) ) ) {
+		if ( isset( $args['xprofile_query']['args'] ) && is_array( $args['xprofile_query']['args'] ) ) {
+			$xprofile_query_args = $args['xprofile_query']['args'];
+
+			if ( isset( $args['xprofile_query']['relation'] ) ) {
+				$xprofile_query_args = array_merge(
+					array(
+						'relation' => $args['xprofile_query']['relation'],
+					),
+					$xprofile_query_args
+				);
+			}
+
+			$args['xprofile_query'] = $xprofile_query_args;
+		} else {
 			$args['xprofile_query'] = false;
 		}
 
@@ -390,45 +406,85 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 	}
 
 	/**
-	 * Deleting the current user is not implemented into this endpoint.
-	 *
-	 * This action is specific to the User Settings endpoint.
+	 * Checks if a given request has access to delete the current user.
 	 *
 	 * @since 5.0.0
+	 * @since 0.7.0 Do implement this method.
 	 *
 	 * @param WP_REST_Request $request Full details about the request.
-	 * @return WP_Error                WP_Error object to inform it's not implemented.
+	 * @return true|WP_Error True if the request has access to delete the item, WP_Error object otherwise.
 	 */
 	public function delete_current_item_permissions_check( $request ) {
-		return new WP_Error(
-			'bp_rest_invalid_method',
-			/* translators: %s: transport method name */
-			sprintf( __( '\'%s\' Transport Method not implemented.', 'buddypress' ), $request->get_method() ),
+		$retval = new WP_Error(
+			'bp_rest_authorization_required',
+			__( 'Sorry, you are not allowed delete your account.', 'buddypress' ),
 			array(
-				'status' => 405,
+				'status' => rest_authorization_required_code(),
 			)
 		);
+
+		if ( ! bp_disable_account_deletion() ) {
+			$retval = true;
+		}
+
+		/**
+		 * Filter the members `delete_current_item` permissions check.
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param true|WP_Error   $retval  Returned value.
+		 * @param WP_REST_Request $request The request sent to the API.
+		 */
+		return apply_filters( 'bp_rest_members_delete_current_item_permissions_check', $retval, $request );
 	}
 
 	/**
-	 * Deleting the current user is not implemented into this endpoint.
-	 *
-	 * This action is specific to the User Settings endpoint.
+	 * Deletes the current user.
 	 *
 	 * @since 5.0.0
+	 * @since 0.7.0 Do implement this method.
 	 *
 	 * @param WP_REST_Request $request Full details about the request.
-	 * @return WP_Error                WP_Error to inform it's not implemented.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function delete_current_item( $request ) {
-		return new WP_Error(
-			'bp_rest_invalid_method',
-			/* translators: %s: transport method name */
-			sprintf( __( '\'%s\' Transport method not implemented.', 'buddypress' ), $request->get_method() ),
+		$request->set_param( 'context', 'edit' );
+
+		$user = bp_rest_get_user( get_current_user_id() );
+
+		if ( ! $user instanceof WP_User ) {
+			return new WP_Error(
+				'bp_rest_member_invalid_id',
+				__( 'Invalid member ID.', 'buddypress' ),
+				array(
+					'status' => 404,
+				)
+			);
+		}
+
+		$previous = $this->prepare_item_for_response( $user, $request );
+		$result   = bp_core_delete_account();
+
+		if ( ! $result ) {
+			return new WP_Error(
+				'bp_rest_members_cannot_delete',
+				__( 'Your account cannot be deleted.', 'buddypress' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$response = new WP_REST_Response();
+		$response->set_data(
 			array(
-				'status' => 405,
+				'deleted'  => true,
+				'previous' => $previous->get_data(),
 			)
 		);
+
+		/* this action is documented in wp-includes/rest-api/endpoints/class-wp-rest-users-controller.php */
+		do_action( 'rest_delete_user', $user, $response, $request );
+
+		return $response;
 	}
 
 	/**
@@ -447,7 +503,7 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 		$data     = $this->filter_response_by_context( $data, $context );
 		$response = rest_ensure_response( $data );
 
-		$response->add_links( $this->prepare_links( $user ) );
+		$response->add_links( $this->prepare_links( $user, $data ) );
 
 		// Update current user's last activity.
 		if ( strpos( $request->get_route(), 'members/me' ) !== false && get_current_user_id() === $user->ID ) {
@@ -467,12 +523,88 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 	}
 
 	/**
+	 * Prepares links for the user request.
+	 *
+	 * @since 11.0.0
+	 *
+	 * @param WP_User $user      User object.
+	 * @param array   $user_data User data.
+	 * @return array
+	 */
+	protected function prepare_links( $user, $user_data = array() ) {
+		$base  = sprintf( '/%1$s/%2$s/', $this->namespace, $this->rest_base );
+		$links = array(
+			'self'       => array(
+				'href' => rest_url( $base . $user->ID ),
+			),
+			'collection' => array(
+				'href' => rest_url( $base ),
+			),
+		);
+
+		// Actions.
+
+		if ( is_user_logged_in() ) {
+			if ( bp_is_active( 'friends' ) ) {
+				$friends_component = buddypress()->friends->id;
+				$friends_action    = array( 'href' => bp_rest_get_object_url( $user->ID, $friends_component ) );
+
+				switch ( $user_data['friendship_status_slug'] ) {
+					case 'not_friends':
+						$links['bp-action-add-friendship'] = array(
+							'href'         => rest_url( sprintf( '/%1$s/%2$s/', $this->namespace, $friends_component ) ),
+							'initiator_id' => bp_loggedin_user_id(),
+							'friend_id'    => $user->ID,
+						);
+						break;
+
+					case 'is_friend':
+						$links['bp-action-delete-friendship'] = $friends_action;
+						break;
+
+					case 'pending':
+						$links['bp-action-cancel-friendship-request'] = $friends_action;
+						break;
+
+					case 'awaiting_response':
+						$links['bp-action-accept-friendship-request'] = $friends_action;
+						$links['bp-action-reject-friendship-request'] = $friends_action;
+						break;
+				}
+			}
+
+			if (
+				bp_is_active( 'messages' )
+				&& (
+					true === wp_validate_boolean( $user_data['friendship_status'] )
+					|| buddypress()->messages->autocomplete_all === true
+				)
+			) {
+				$links['bp-action-create-thread'] = array(
+					'href'    => rest_url( sprintf( '/%1$s/%2$s/', $this->namespace, buddypress()->messages->id ) ),
+					'user_id' => $user->ID,
+				);
+			}
+		}
+
+		/**
+		 * Filter links prepared for the REST response.
+		 *
+		 * @since 11.0.0
+		 *
+		 * @param array   $links The prepared links of the REST response.
+		 * @param WP_User $user  The User object.
+		 */
+		return apply_filters( 'bp_rest_member_prepare_links', $links, $user );
+	}
+
+	/**
 	 * Method to facilitate fetching of user data.
 	 *
 	 * This was abstracted to be used in other BuddyPress endpoints.
 	 *
 	 * @since 5.0.0
-	 * @since 7.0.0 Add the $request parameter.
+	 * @since 7.0.0 Add the `$request` parameter.
 	 *
 	 * @param WP_User         $user    User object.
 	 * @param string          $context The context of the request. Defaults to 'view'.
@@ -485,13 +617,14 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 		}
 
 		$data = array(
-			'id'                     => $user->ID,
+			'id'                     => (int) $user->ID,
 			'name'                   => $user->display_name,
 			'user_login'             => $user->user_login,
 			'roles'                  => array(),
 			'capabilities'           => array(),
 			'extra_capabilities'     => array(),
-			'registered_date'        => '',
+			'registered_date'        => null,
+			'registered_date_gmt'    => null,
 			'friendship_status'      => false,
 			'friendship_status_slug' => '',
 		);
@@ -524,20 +657,22 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 		// Populate extras.
 		if ( $request->get_param( 'populate_extras' ) ) {
 			$data['registered_since'] = bp_core_time_since( $user->user_registered );
-
-			$data['last_activity'] = array(
-				'timediff' => '',
-				'date'     => '',
+			$data['last_activity']    = array(
+				'timediff' => null,
+				'date'     => null,
+				'date_gmt' => null,
 			);
 
 			if ( get_current_user_id() === $user->ID ) {
 				$right_now                         = gmdate( 'Y-m-d H:i:s', bp_core_current_time( true, 'timestamp' ) );
 				$data['last_activity']['timediff'] = bp_core_time_since( $right_now );
-				$data['last_activity']['date']     = bp_rest_prepare_date_response( $right_now );
+				$data['last_activity']['date']     = bp_rest_prepare_date_response( $right_now, get_date_from_gmt( $right_now ) );
+				$data['last_activity']['date_gmt'] = bp_rest_prepare_date_response( $right_now );
 
 			} elseif ( $user->last_activity ) {
 				$data['last_activity']['timediff'] = bp_core_time_since( $user->last_activity );
-				$data['last_activity']['date']     = bp_rest_prepare_date_response( $user->last_activity );
+				$data['last_activity']['date']     = bp_rest_prepare_date_response( $user->last_activity, get_date_from_gmt( $user->last_activity ) );
+				$data['last_activity']['date_gmt'] = bp_rest_prepare_date_response( $user->last_activity );
 			}
 
 			if ( bp_is_active( 'activity' ) ) {
@@ -576,10 +711,11 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 		}
 
 		if ( 'edit' === $context && current_user_can( 'list_users' ) ) {
-			$data['registered_date']    = bp_rest_prepare_date_response( $user->data->user_registered );
-			$data['roles']              = (array) array_values( $user->roles );
-			$data['capabilities']       = (array) array_keys( $user->allcaps );
-			$data['extra_capabilities'] = (array) array_keys( $user->caps );
+			$data['registered_date']     = bp_rest_prepare_date_response( $user->data->user_registered, get_date_from_gmt( $user->data->user_registered ) );
+			$data['registered_date_gmt'] = bp_rest_prepare_date_response( $user->data->user_registered );
+			$data['roles']               = (array) array_values( $user->roles );
+			$data['capabilities']        = (array) array_keys( $user->allcaps );
+			$data['extra_capabilities']  = (array) array_keys( $user->caps );
 		}
 
 		// The name used for that user in @-mentions.
@@ -838,21 +974,21 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 				'title'      => 'bp_members',
 				'type'       => 'object',
 				'properties' => array(
-					'id'                 => array(
+					'id'                     => array(
 						'description' => __( 'A unique numeric ID for the Member.', 'buddypress' ),
 						'type'        => 'integer',
 						'context'     => array( 'view', 'edit', 'embed' ),
 						'readonly'    => true,
 					),
-					'name'               => array(
+					'name'                   => array(
 						'description' => __( 'Display name for the member.', 'buddypress' ),
 						'type'        => 'string',
-						'context'     => array( 'view', 'edit' ),
+						'context'     => array( 'view', 'edit', 'embed' ),
 						'arg_options' => array(
 							'sanitize_callback' => 'sanitize_text_field',
 						),
 					),
-					'mention_name'       => array(
+					'mention_name'           => array(
 						'description' => __( 'The name used for that user in @-mentions.', 'buddypress' ),
 						'type'        => 'string',
 						'context'     => array( 'view', 'edit', 'embed' ),
@@ -861,14 +997,14 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 						),
 						'readonly'    => true,
 					),
-					'link'               => array(
+					'link'                   => array(
 						'description' => __( 'Profile URL of the member.', 'buddypress' ),
 						'type'        => 'string',
 						'format'      => 'uri',
 						'context'     => array( 'view', 'edit', 'embed' ),
 						'readonly'    => true,
 					),
-					'user_login'         => array(
+					'user_login'             => array(
 						'description' => __( 'An alphanumeric identifier for the Member.', 'buddypress' ),
 						'type'        => 'string',
 						'context'     => array( 'view', 'edit', 'embed' ),
@@ -877,7 +1013,7 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 							'sanitize_callback' => array( $this, 'check_username' ),
 						),
 					),
-					'member_types'       => array(
+					'member_types'           => array(
 						'description' => __( 'Member types associated with the member.', 'buddypress' ),
 						'enum'        => bp_get_member_types(),
 						'type'        => 'array',
@@ -887,20 +1023,27 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 						'context'     => array( 'view', 'edit', 'embed' ),
 						'readonly'    => true,
 					),
-					'registered_date'    => array(
-						'description' => __( 'Registration date for the member.', 'buddypress' ),
-						'type'        => 'string',
+					'registered_date'        => array(
+						'description' => __( 'Registration date for the member, in the site\'s timezone.', 'buddypress' ),
+						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 						'context'     => array( 'edit' ),
 						'readonly'    => true,
 					),
-					'registered_since'   => array(
+					'registered_date_gmt'    => array(
+						'description' => __( 'Registration date for the member, as GMT.', 'buddypress' ),
+						'type'        => array( 'string', 'null' ),
+						'format'      => 'date-time',
+						'context'     => array( 'edit' ),
+						'readonly'    => true,
+					),
+					'registered_since'       => array(
 						'description' => __( 'Elapsed time since the member registered.', 'buddypress' ),
 						'type'        => 'string',
 						'context'     => array( 'view', 'edit' ),
 						'readonly'    => true,
 					),
-					'password'           => array(
+					'password'               => array(
 						'description' => __( 'Password for the member (never included).', 'buddypress' ),
 						'type'        => 'string',
 						'context'     => array(), // Password is never displayed.
@@ -909,7 +1052,7 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 							'sanitize_callback' => array( $this, 'check_user_password' ),
 						),
 					),
-					'roles'              => array(
+					'roles'                  => array(
 						'description' => __( 'Roles assigned to the member.', 'buddypress' ),
 						'type'        => 'array',
 						'context'     => array( 'edit' ),
@@ -917,25 +1060,25 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 							'type' => 'string',
 						),
 					),
-					'capabilities'       => array(
+					'capabilities'           => array(
 						'description' => __( 'All capabilities assigned to the user.', 'buddypress' ),
 						'type'        => 'object',
 						'context'     => array( 'edit' ),
 						'readonly'    => true,
 					),
-					'extra_capabilities' => array(
+					'extra_capabilities'     => array(
 						'description' => __( 'Any extra capabilities assigned to the user.', 'buddypress' ),
 						'type'        => 'object',
 						'context'     => array( 'edit' ),
 						'readonly'    => true,
 					),
-					'xprofile'             => array(
+					'xprofile'               => array(
 						'description' => __( 'Member XProfile groups and its fields.', 'buddypress' ),
 						'type'        => 'array',
 						'context'     => array( 'view', 'edit' ),
 						'readonly'    => true,
 					),
-					'friendship_status'    => array(
+					'friendship_status'      => array(
 						'description' => __( 'Friendship relation with, current, logged in user.', 'buddypress' ),
 						'type'        => 'bool',
 						'context'     => array( 'view', 'edit', 'embed' ),
@@ -953,11 +1096,21 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 						'type'        => 'object',
 						'properties'  => array(
 							'timediff' => array(
-								'type' => 'string',
+								'description' => __( 'English-language representation of the date.', 'buddypress' ),
+								'type'        => 'string',
+								'readonly'    => true,
 							),
 							'date'     => array(
-								'type'   => 'string',
-								'format' => 'date-time',
+								'description' => __( 'Date in the site\'s timezone.', 'buddypress' ),
+								'type'        => array( 'string', 'null' ),
+								'readonly'    => true,
+								'format'      => 'date-time',
+							),
+							'date_gmt' => array(
+								'description' => __( 'Date as GMT.', 'buddypress' ),
+								'type'        => array( 'string', 'null' ),
+								'readonly'    => true,
+								'format'      => 'date-time',
 							),
 						),
 						'format'      => 'date-time',
@@ -1118,9 +1271,7 @@ class BP_REST_Members_Endpoint extends WP_REST_Users_Controller {
 
 		$params['xprofile'] = array(
 			'description'       => __( 'Limit results set to a certain XProfile field.', 'buddypress' ),
-			'default'           => '',
-			'type'              => 'string',
-			'sanitize_callback' => 'sanitize_key',
+			'type'              => array( 'array', 'object' ),
 			'validate_callback' => 'rest_validate_request_arg',
 		);
 

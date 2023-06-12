@@ -14,8 +14,9 @@ defined( 'ABSPATH' ) || exit;
  * Query for XProfile groups and fields.
  *
  * @since 1.0.0
- * @since 2.4.0 Introduced `$member_type` argument.
- * @since 8.0.0 Introduced `$hide_field_types` & `$signup_fields_only` arguments.
+ * @since 2.4.0  Introduced `$member_type` argument.
+ * @since 8.0.0  Introduced `$hide_field_types` & `$signup_fields_only` arguments.
+ * @since 11.0.0 `$profile_group_id` accepts an array of profile group ids.
  *
  * @global object $profile_template
  * @see BP_XProfile_Group::get() for full description of `$args` array.
@@ -23,23 +24,22 @@ defined( 'ABSPATH' ) || exit;
  * @param array|string $args {
  *     Array of arguments. See BP_XProfile_Group::get() for full description. Those arguments whose defaults differ
  *     from that method are described here:
- *     @type int          $user_id                Default: ID of the displayed user.
- *     @type string|array $member_type            Default: 'any'.
- *     @type int|bool     $profile_group_id       Default: false.
- *     @type bool         $hide_empty_groups      Default: true.
- *     @type bool         $hide_empty_fields      Defaults to true on the Dashboard, on a user's Edit Profile page,
- *                                                or during registration. Otherwise false.
- *     @type bool         $fetch_fields           Default: true.
- *     @type bool         $fetch_field_data       Default: true.
- *     @type bool         $fetch_visibility_level Defaults to true when an admin is viewing a profile, or when a user is
- *                                                viewing her own profile, or during registration. Otherwise false.
- *     @type int[]|bool   $exclude_groups         Default: false.
- *     @type int[]|bool   $exclude_fields         Default: false.
- *     @type string[]     $hide_field_types       Default: empty array.
- *     @type bool         $signup_fields_only     Default: false.
- *     @type bool         $update_meta_cache      Default: true.
+ *     @type int            $user_id                Default: ID of the displayed user.
+ *     @type string|array   $member_type            Default: 'any'.
+ *     @type int|int[]|bool $profile_group_id       Default: false.
+ *     @type bool           $hide_empty_groups      Default: true.
+ *     @type bool           $hide_empty_fields      Defaults to true on the Dashboard, on a user's Edit Profile page,
+ *                                                  or during registration. Otherwise false.
+ *     @type bool           $fetch_fields           Default: true.
+ *     @type bool           $fetch_field_data       Default: true.
+ *     @type bool           $fetch_visibility_level Defaults to true when an admin is viewing a profile, or when a user is
+ *                                                  viewing her own profile, or during registration. Otherwise false.
+ *     @type int[]|bool     $exclude_groups         Default: false.
+ *     @type int[]|bool     $exclude_fields         Default: false.
+ *     @type string[]       $hide_field_types       Default: empty array.
+ *     @type bool           $signup_fields_only     Default: false.
+ *     @type bool           $update_meta_cache      Default: true.
  * }
- *
  * @return bool
  */
 function bp_has_profile( $args = '' ) {
@@ -57,21 +57,25 @@ function bp_has_profile( $args = '' ) {
 	}
 
 	// Parse arguments.
-	$r = bp_parse_args( $args, array(
-		'user_id'                => bp_displayed_user_id(),
-		'member_type'            => 'any',
-		'profile_group_id'       => false,
-		'hide_empty_groups'      => true,
-		'hide_empty_fields'      => $hide_empty_fields_default,
-		'fetch_fields'           => true,
-		'fetch_field_data'       => true,
-		'fetch_visibility_level' => $fetch_visibility_level_default,
-		'exclude_groups'         => false, // Comma-separated list of profile field group IDs to exclude.
-		'exclude_fields'         => false, // Comma-separated list of profile field IDs to exclude.
-		'hide_field_types'       => array(), // List of field types to hide from profile fields loop.
-		'signup_fields_only'     => false, // Whether to only return signup fields.
-		'update_meta_cache'      => true,
-	), 'has_profile' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'user_id'                => bp_displayed_user_id(),
+			'member_type'            => 'any',
+			'profile_group_id'       => false,
+			'hide_empty_groups'      => true,
+			'hide_empty_fields'      => $hide_empty_fields_default,
+			'fetch_fields'           => true,
+			'fetch_field_data'       => true,
+			'fetch_visibility_level' => $fetch_visibility_level_default,
+			'exclude_groups'         => false, // Comma-separated list of profile field group IDs to exclude.
+			'exclude_fields'         => false, // Comma-separated list of profile field IDs to exclude.
+			'hide_field_types'       => array(), // List of field types to hide from profile fields loop.
+			'signup_fields_only'     => false, // Whether to only return signup fields.
+			'update_meta_cache'      => true,
+		),
+		'has_profile'
+	);
 
 	// Populate the template loop global.
 	$profile_template = new BP_XProfile_Data_Template( $r );
@@ -763,10 +767,14 @@ function bp_the_profile_field_options( $args = array() ) {
 	function bp_get_the_profile_field_options( $args = array() ) {
 		global $field;
 
-		$args = bp_parse_args( $args, array(
-			'type'    => false,
-			'user_id' => bp_displayed_user_id(),
-		), 'get_the_profile_field_options' );
+		$args = bp_parse_args(
+			$args,
+			array(
+				'type'    => false,
+				'user_id' => bp_displayed_user_id(),
+			),
+			'get_the_profile_field_options'
+		);
 
 		/**
 		 * In some cases, the $field global is not an instantiation of the BP_XProfile_Field class.
@@ -954,10 +962,13 @@ function bp_profile_field_data( $args = '' ) {
 	 */
 	function bp_get_profile_field_data( $args = '' ) {
 
-		$r = wp_parse_args( $args, array(
-			'field'   => false, // Field name or ID.
-			'user_id' => bp_displayed_user_id()
-		) );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'field'   => false, // Field name or ID.
+				'user_id' => bp_displayed_user_id(),
+			)
+		);
 
 		/**
 		 * Filters the profile field data.
@@ -1263,14 +1274,18 @@ function bp_profile_visibility_radio_buttons( $args = '' ) {
 	function bp_profile_get_visibility_radio_buttons( $args = '' ) {
 
 		// Parse optional arguments.
-		$r = bp_parse_args( $args, array(
-			'field_id'     => bp_get_the_profile_field_id(),
-			'before'       => '<div class="radio">',
-			'after'        => '</div>',
-			'before_radio' => '',
-			'after_radio'  => '',
-			'class'        => 'bp-xprofile-visibility'
-		), 'xprofile_visibility_radio_buttons' );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'field_id'     => bp_get_the_profile_field_id(),
+				'before'       => '<div class="radio">',
+				'after'        => '</div>',
+				'before_radio' => '',
+				'after_radio'  => '',
+				'class'        => 'bp-xprofile-visibility',
+			),
+			'xprofile_visibility_radio_buttons'
+		);
 
 		// Empty return value, filled in below if a valid field ID is found.
 		$retval = '';
@@ -1353,17 +1368,21 @@ function bp_profile_settings_visibility_select( $args = '' ) {
 	function bp_profile_get_settings_visibility_select( $args = '' ) {
 
 		// Parse optional arguments.
-		$r = bp_parse_args( $args, array(
-			'field_id'         => bp_get_the_profile_field_id(),
-			'before'           => '',
-			'before_controls'  => '',
-			'after'            => '',
-			'after_controls'   => '',
-			'class'            => 'bp-xprofile-visibility',
-			'label_class'      => 'bp-screen-reader-text',
-			'notoggle_tag'     => 'span',
-			'notoggle_class'   => 'field-visibility-settings-notoggle',
-		), 'xprofile_settings_visibility_select' );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'field_id'        => bp_get_the_profile_field_id(),
+				'before'          => '',
+				'before_controls' => '',
+				'after'           => '',
+				'after_controls'  => '',
+				'class'           => 'bp-xprofile-visibility',
+				'label_class'     => 'bp-screen-reader-text',
+				'notoggle_tag'    => 'span',
+				'notoggle_class'  => 'field-visibility-settings-notoggle',
+			),
+			'xprofile_settings_visibility_select'
+		);
 
 		// Empty return value, filled in below if a valid field ID is found.
 		$retval = '';

@@ -255,7 +255,7 @@ class BP_Activity_Activity {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param BP_Activity_Activity $this Current instance of the activity item being saved. Passed by reference.
+		 * @param BP_Activity_Activity $activity Current instance of the activity item being saved. Passed by reference.
 		 */
 		do_action_ref_array( 'bp_activity_before_save', array( &$this ) );
 
@@ -326,7 +326,7 @@ class BP_Activity_Activity {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param BP_Activity_Activity $this Current instance of activity item being saved. Passed by reference.
+		 * @param BP_Activity_Activity $activity Current instance of activity item being saved. Passed by reference.
 		 */
 		do_action_ref_array( 'bp_activity_after_save', array( &$this ) );
 
@@ -341,6 +341,8 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @since 2.4.0 Introduced the `$fields` parameter.
 	 * @since 2.9.0 Introduced the `$order_by` parameter.
+	 * @since 10.0.0 Introduced the `$count_total_only` parameter.
+	 * @since 11.0.0 Introduced the `$user_id__in` and `$user_id__not_in` parameters.
 	 *
 	 * @see BP_Activity_Activity::get_filter_sql() for a description of the
 	 *      'filter' parameter.
@@ -365,6 +367,10 @@ class BP_Activity_Activity {
 	 *     @type array        $filter_query      Array of advanced query conditions. See BP_Activity_Query::__construct().
 	 *     @type string|array $scope             Pre-determined set of activity arguments.
 	 *     @type array        $filter            See BP_Activity_Activity::get_filter_sql().
+	 *     @type array        $user_id__in       An array of user ids to include. Activity posted by users matching one of these
+	 *                                           user ids will be included in results. Default empty array.
+	 *     @type array        $user_id__not_in   An array of user ids to exclude. Activity posted by users matching one of these
+	 *                                           user ids will not be included in results. Default empty array.
 	 *     @type string       $search_terms      Limit results by a search term. Default: false.
 	 *     @type bool         $display_comments  Whether to include activity comments. Default: false.
 	 *     @type bool         $show_hidden       Whether to show items marked hide_sitewide. Default: false.
@@ -372,6 +378,8 @@ class BP_Activity_Activity {
 	 *     @type bool         $update_meta_cache Whether to pre-fetch metadata for queried activity items. Default: true.
 	 *     @type string|bool  $count_total       If true, an additional DB query is run to count the total activity items
 	 *                                           for the query. Default: false.
+	 *     @type bool         $count_total_only  If true, only the DB query to count the total activity items is run.
+	 *                                           Default: false.
 	 * }
 	 * @return array The array returned has two keys:
 	 *               - 'total' is the count of located activities
@@ -383,13 +391,13 @@ class BP_Activity_Activity {
 		$function_args = func_get_args();
 
 		// Backward compatibility with old method of passing arguments.
-		if ( !is_array( $args ) || count( $function_args ) > 1 ) {
+		if ( ! is_array( $args ) || count( $function_args ) > 1 ) {
 			_deprecated_argument(
 				__METHOD__,
 				'1.6',
 				sprintf(
 					/* translators: 1: the name of the method. 2: the name of the file. */
-					__( 'Arguments passed to %1$s should be in an associative array. See the inline documentation at %2$s for more details.', 'buddypress' ),
+					esc_html__( 'Arguments passed to %1$s should be in an associative array. See the inline documentation at %2$s for more details.', 'buddypress' ),
 					__METHOD__,
 					__FILE__
 				)
@@ -413,27 +421,33 @@ class BP_Activity_Activity {
 		}
 
 		$bp = buddypress();
-		$r  = wp_parse_args( $args, array(
-			'page'              => 1,               // The current page.
-			'per_page'          => 25,              // Activity items per page.
-			'max'               => false,           // Max number of items to return.
-			'fields'            => 'all',           // Fields to include.
-			'sort'              => 'DESC',          // ASC or DESC.
-			'order_by'          => 'date_recorded', // Column to order by.
-			'exclude'           => false,           // Array of ids to exclude.
-			'in'                => false,           // Array of ids to limit query by (IN).
-			'meta_query'        => false,           // Filter by activitymeta.
-			'date_query'        => false,           // Filter by date.
-			'filter_query'      => false,           // Advanced filtering - see BP_Activity_Query.
-			'filter'            => false,           // See self::get_filter_sql().
-			'scope'             => false,           // Preset activity arguments.
-			'search_terms'      => false,           // Terms to search by.
-			'display_comments'  => false,           // Whether to include activity comments.
-			'show_hidden'       => false,           // Show items marked hide_sitewide.
-			'spam'              => 'ham_only',      // Spam status.
-			'update_meta_cache' => true,            // Whether or not to update meta cache.
-			'count_total'       => false,           // Whether or not to use count_total.
-		) );
+		$r  = bp_parse_args(
+			$args,
+			array(
+				'page'              => 1,               // The current page.
+				'per_page'          => 25,              // Activity items per page.
+				'max'               => false,           // Max number of items to return.
+				'fields'            => 'all',           // Fields to include.
+				'sort'              => 'DESC',          // ASC or DESC.
+				'order_by'          => 'date_recorded', // Column to order by.
+				'exclude'           => false,           // Array of ids to exclude.
+				'in'                => false,           // Array of ids to limit query by (IN).
+				'meta_query'        => false,           // Filter by activitymeta.
+				'date_query'        => false,           // Filter by date.
+				'filter_query'      => false,           // Advanced filtering - see BP_Activity_Query.
+				'user_id__in'       => array(),         // Array of user ids to include.
+				'user_id__not_in'   => array(),         // Array of user ids to excluce.
+				'filter'            => false,           // See self::get_filter_sql().
+				'scope'             => false,           // Preset activity arguments.
+				'search_terms'      => false,           // Terms to search by.
+				'display_comments'  => false,           // Whether to include activity comments.
+				'show_hidden'       => false,           // Show items marked hide_sitewide.
+				'spam'              => 'ham_only',      // Spam status.
+				'update_meta_cache' => true,            // Whether or not to update meta cache.
+				'count_total'       => false,           // Whether or not to use count_total.
+				'count_total_only'  => false,           // Whether to only get the total count.
+			)
+		);
 
 		// Select conditions.
 		$select_sql = "SELECT DISTINCT a.id";
@@ -476,6 +490,50 @@ class BP_Activity_Activity {
 			$where_conditions['filter_sql'] = $filter_sql;
 		}
 
+		// User IDs filtering.
+		$user_ids_clause  = array();
+		$user_ids_filters = array_filter(
+			array_intersect_key(
+				$r,
+				array(
+					'user_id__in'     => true,
+					'user_id__not_in' => true,
+				)
+			)
+		);
+
+		foreach ( $user_ids_filters as $user_ids_filter_key => $user_ids_filter ) {
+			$user_ids_operator = 'IN';
+			if ( 'user_id__not_in' === $user_ids_filter_key ) {
+				$user_ids_operator = 'NOT IN';
+			}
+
+			if ( $user_ids_clause ) {
+				$user_ids_clause[] = array(
+					'column'  => 'user_id',
+					'compare' => $user_ids_operator,
+					'value'   => (array) $user_ids_filter,
+				);
+			} else {
+				$user_ids_clause = array(
+					'relation' => 'AND',
+					array(
+						'column'  => 'user_id',
+						'compare' => $user_ids_operator,
+						'value'   => (array) $user_ids_filter,
+					),
+				);
+			}
+		}
+
+		if ( $user_ids_clause ) {
+			$user_ids_query = new BP_Activity_Query( $user_ids_clause );
+			$user_ids_sql   = $user_ids_query->get_sql();
+			if ( ! empty( $user_ids_sql ) ) {
+				$where_conditions['user_ids_query_sql'] = $user_ids_sql;
+			}
+		}
+
 		// Spam.
 		if ( 'ham_only' == $r['spam'] ) {
 			$where_conditions['spam_sql'] = 'a.is_spam = 0';
@@ -504,10 +562,10 @@ class BP_Activity_Activity {
 			}
 		}
 
-		// Sorting.
+		// Sanitize 'order'.
 		$sort = $r['sort'];
-		if ( $sort != 'ASC' && $sort != 'DESC' ) {
-			$sort = 'DESC';
+		if ( 'DESC' !== $sort ) {
+			$sort = bp_esc_sql_order( $sort );
 		}
 
 		switch( $r['order_by'] ) {
@@ -626,6 +684,10 @@ class BP_Activity_Activity {
 			'has_more_items' => null,
 		);
 
+		// Init the activity list.
+		$activities     = array();
+		$only_get_count = (bool) $r['count_total_only'];
+
 		/**
 		 * Filters if BuddyPress should use legacy query structure over current structure for version 2.0+.
 		 *
@@ -637,7 +699,7 @@ class BP_Activity_Activity {
 		 * @param BP_Activity_Activity $value Current method being called.
 		 * @param array                $r     Parsed arguments passed into method.
 		 */
-		if ( apply_filters( 'bp_use_legacy_activity_query', false, __METHOD__, $r ) ) {
+		if ( ! $only_get_count && apply_filters( 'bp_use_legacy_activity_query', false, __METHOD__, $r ) ) {
 
 			// Legacy queries joined against the user table.
 			$select_sql = "SELECT DISTINCT a.*, u.user_email, u.user_nicename, u.user_login, u.display_name";
@@ -689,7 +751,7 @@ class BP_Activity_Activity {
 				$activities[ $i ]->is_spam           = (int) $ac->is_spam;
 			}
 
-		} else {
+		} elseif ( ! $only_get_count ) {
 			// Query first for activity IDs.
 			$activity_ids_sql = "{$select_sql} {$from_sql} {$join_sql} {$where_sql} ORDER BY {$order_by} {$sort}, a.id {$sort}";
 
@@ -742,7 +804,7 @@ class BP_Activity_Activity {
 			}
 		}
 
-		if ( 'ids' !== $r['fields'] ) {
+		if ( $activities && 'ids' !== $r['fields'] ) {
 			// Get the fullnames of users so we don't have to query in the loop.
 			$activities = self::append_user_fullnames( $activities );
 
@@ -769,9 +831,8 @@ class BP_Activity_Activity {
 
 		$retval['activities'] = $activities;
 
-		// If $max is set, only return up to the max results.
-		if ( ! empty( $r['count_total'] ) ) {
-
+		// Only query the count total if requested.
+		if ( ! empty( $r['count_total'] ) || $only_get_count ) {
 			/**
 			 * Filters the total activities MySQL statement.
 			 *
@@ -782,6 +843,17 @@ class BP_Activity_Activity {
 			 * @param string $sort      Sort direction for query.
 			 */
 			$total_activities_sql = apply_filters( 'bp_activity_total_activities_sql', "SELECT count(DISTINCT a.id) FROM {$bp->activity->table_name} a {$join_sql} {$where_sql}", $where_sql, $sort );
+
+			/*
+			 * Queries that include 'last_activity' are cached separately,
+			 * since they are generally much less long-lived.
+			 */
+			if ( preg_match( '/a\.type NOT IN \([^\)]*\'last_activity\'[^\)]*\)/', $total_activities_sql ) ) {
+				$cache_group = 'bp_activity';
+			} else {
+				$cache_group = 'bp_activity_with_last_activity';
+			}
+
 			$cached = bp_core_get_incremented_cache( $total_activities_sql, $cache_group );
 			if ( false === $cached ) {
 				$total_activities = $wpdb->get_var( $total_activities_sql );
@@ -790,7 +862,8 @@ class BP_Activity_Activity {
 				$total_activities = $cached;
 			}
 
-			if ( !empty( $r['max'] ) ) {
+			// If $max is set, only return up to the max results.
+			if ( ! empty( $r['max'] ) ) {
 				if ( (int) $total_activities > (int) $r['max'] ) {
 					$total_activities = $r['max'];
 				}
@@ -1010,9 +1083,6 @@ class BP_Activity_Activity {
 	 *
 	 * We use BP_Date_Query, which extends WP_Date_Query, to do the heavy lifting
 	 * of parsing the date_query array and creating the necessary SQL clauses.
-	 * However, since BP_Activity_Activity::get() builds its SQL differently than
-	 * WP_Query, we have to alter the return value (stripping the leading AND
-	 * keyword from the query).
 	 *
 	 * @since 2.1.0
 	 *
@@ -1021,15 +1091,7 @@ class BP_Activity_Activity {
 	 * @return string
 	 */
 	public static function get_date_query_sql( $date_query = array() ) {
-		$sql = '';
-
-		// Date query.
-		if ( ! empty( $date_query ) && is_array( $date_query ) ) {
-			$date_query = new BP_Date_Query( $date_query, 'date_recorded' );
-			$sql = preg_replace( '/^\sAND/', '', $date_query->get_sql() );
-		}
-
-		return $sql;
+		return BP_Date_Query::get_where_sql( $date_query, 'a.date_recorded' );
 	}
 
 	/**
@@ -1155,7 +1217,12 @@ class BP_Activity_Activity {
 	 * @return array
 	 */
 	public static function get_specific( $activity_ids, $max = false, $page = 1, $per_page = 25, $sort = 'DESC', $display_comments = false ) {
-		_deprecated_function( __FUNCTION__, '1.5', 'Use BP_Activity_Activity::get() with the "in" parameter instead.' );
+		_deprecated_function(
+			__FUNCTION__,
+			'1.5',
+			'Use BP_Activity_Activity::get() with the "in" parameter instead.'
+		);
+
 		return BP_Activity_Activity::get( $max, $page, $per_page, $sort, false, false, $display_comments, false, false, $activity_ids );
 	}
 
@@ -1163,61 +1230,105 @@ class BP_Activity_Activity {
 	 * Get the first activity ID that matches a set of criteria.
 	 *
 	 * @since 1.2.0
+	 * @since 10.0.0 Parameters were made optional.
 	 *
-	 * @todo Should parameters be optional?
-	 *
-	 * @param int    $user_id           User ID to filter by.
-	 * @param string $component         Component to filter by.
-	 * @param string $type              Activity type to filter by.
-	 * @param int    $item_id           Associated item to filter by.
-	 * @param int    $secondary_item_id Secondary associated item to filter by.
-	 * @param string $action            Action to filter by.
-	 * @param string $content           Content to filter by.
-	 * @param string $date_recorded     Date to filter by.
+	 * @param array $args {
+	 *     An array of arguments. All items are optional.
+	 *     @type int    $user_id           User ID to filter by.
+	 *     @type string $component         Component to filter by.
+	 *     @type string $type              Activity type to filter by.
+	 *     @type int    $item_id           Associated item to filter by.
+	 *     @type int    $secondary_item_id Secondary associated item to filter by.
+	 *     @type string $action            Action to filter by.
+	 *     @type string $content           Content to filter by.
+	 *     @type string $date_recorded     Date to filter by.
+	 * }
 	 * @return int|false Activity ID on success, false if none is found.
 	 */
-	public static function get_id( $user_id, $component, $type, $item_id, $secondary_item_id, $action, $content, $date_recorded ) {
+	public static function get_id( $args = array() ) {
 		global $wpdb;
 
-		$bp = buddypress();
+		$function_args = func_get_args();
 
-		$where_args = false;
+		// Backward compatibility with old method of passing arguments.
+		if ( ! is_array( $args ) || count( $function_args ) > 1 ) {
+			_deprecated_argument(
+				__METHOD__,
+				'10.0.0',
+				sprintf(
+					/* translators: 1: the name of the method. 2: the name of the file. */
+					esc_html__( 'Arguments passed to %1$s should be in an associative array. See the inline documentation at %2$s for more details.', 'buddypress' ),
+					__METHOD__,
+					__FILE__
+				)
+			);
 
-		if ( ! empty( $user_id ) ) {
-			$where_args[] = $wpdb->prepare( "user_id = %d", $user_id );
+			$old_args_keys = array(
+				0 => 'user_id',
+				1 => 'component',
+				2 => 'type',
+				3 => 'item_id',
+				4 => 'secondary_item_id',
+				5 => 'action',
+				6 => 'content',
+				7 => 'date_recorded',
+			);
+
+			$args = bp_core_parse_args_array( $old_args_keys, $function_args );
 		}
 
-		if ( ! empty( $component ) ) {
-			$where_args[] = $wpdb->prepare( "component = %s", $component );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'user_id'           => false,
+				'component'         => false,
+				'type'              => false,
+				'item_id'           => false,
+				'secondary_item_id' => false,
+				'action'            => false,
+				'content'           => false,
+				'date_recorded'     => false,
+			)
+		);
+
+		$where_args = array();
+
+		if ( ! empty( $r['user_id'] ) ) {
+			$where_args[] = $wpdb->prepare( 'user_id = %d', $r['user_id'] );
 		}
 
-		if ( ! empty( $type ) ) {
-			$where_args[] = $wpdb->prepare( "type = %s", $type );
+		if ( ! empty( $r['component'] ) ) {
+			$where_args[] = $wpdb->prepare( 'component = %s', $r['component'] );
 		}
 
-		if ( ! empty( $item_id ) ) {
-			$where_args[] = $wpdb->prepare( "item_id = %d", $item_id );
+		if ( ! empty( $r['type'] ) ) {
+			$where_args[] = $wpdb->prepare( 'type = %s', $r['type'] );
 		}
 
-		if ( ! empty( $secondary_item_id ) ) {
-			$where_args[] = $wpdb->prepare( "secondary_item_id = %d", $secondary_item_id );
+		if ( ! empty( $r['item_id'] ) ) {
+			$where_args[] = $wpdb->prepare( 'item_id = %d', $r['item_id'] );
 		}
 
-		if ( ! empty( $action ) ) {
-			$where_args[] = $wpdb->prepare( "action = %s", $action );
+		if ( ! empty( $r['secondary_item_id'] ) ) {
+			$where_args[] = $wpdb->prepare( 'secondary_item_id = %d', $r['secondary_item_id'] );
 		}
 
-		if ( ! empty( $content ) ) {
-			$where_args[] = $wpdb->prepare( "content = %s", $content );
+		if ( ! empty( $r['action'] ) ) {
+			$where_args[] = $wpdb->prepare( 'action = %s', $r['action'] );
 		}
 
-		if ( ! empty( $date_recorded ) ) {
-			$where_args[] = $wpdb->prepare( "date_recorded = %s", $date_recorded );
+		if ( ! empty( $r['content'] ) ) {
+			$where_args[] = $wpdb->prepare( 'content = %s', $r['content'] );
+		}
+
+		if ( ! empty( $r['date_recorded'] ) ) {
+			$where_args[] = $wpdb->prepare( 'date_recorded = %s', $r['date_recorded'] );
 		}
 
 		if ( ! empty( $where_args ) ) {
+			$bp        = buddypress();
 			$where_sql = 'WHERE ' . join( ' AND ', $where_args );
-			$result = $wpdb->get_var( "SELECT id FROM {$bp->activity->table_name} {$where_sql}" );
+			$result    = $wpdb->get_var( "SELECT id FROM {$bp->activity->table_name} {$where_sql}" );
 
 			return is_numeric( $result ) ? (int) $result : false;
 		}
@@ -1252,19 +1363,22 @@ class BP_Activity_Activity {
 		global $wpdb;
 
 		$bp = buddypress();
-		$r  = wp_parse_args( $args, array(
-			'id'                => false,
-			'action'            => false,
-			'content'           => false,
-			'component'         => false,
-			'type'              => false,
-			'primary_link'      => false,
-			'user_id'           => false,
-			'item_id'           => false,
-			'secondary_item_id' => false,
-			'date_recorded'     => false,
-			'hide_sitewide'     => false
-		) );
+		$r  = bp_parse_args(
+			$args,
+			array(
+				'id'                => false,
+				'action'            => false,
+				'content'           => false,
+				'component'         => false,
+				'type'              => false,
+				'primary_link'      => false,
+				'user_id'           => false,
+				'item_id'           => false,
+				'secondary_item_id' => false,
+				'date_recorded'     => false,
+				'hide_sitewide'     => false,
+			)
+		);
 
 		// Setup empty array from where query arguments.
 		$where_args = array();
@@ -1504,15 +1618,16 @@ class BP_Activity_Activity {
 			$top_level_parent_id = $activity_id;
 		}
 
-		$comments = wp_cache_get( $activity_id, 'bp_activity_comments' );
+		$comments       = array();
+		$comments_cache = wp_cache_get( $activity_id, 'bp_activity_comments' );
 
 		// We store the string 'none' to cache the fact that the
 		// activity item has no comments.
-		if ( 'none' === $comments ) {
-			$comments = false;
+		if ( 'none' === $comments_cache ) {
+			return false;
 
 			// A true cache miss.
-		} elseif ( empty( $comments ) ) {
+		} elseif ( empty( $comments_cache ) ) {
 
 			$bp = buddypress();
 
@@ -1626,17 +1741,19 @@ class BP_Activity_Activity {
 				$r->depth = $depth;
 			}
 
-			// If we cache a value of false, it'll count as a cache
+			// If we cache an empty array, it'll count as a cache
 			// miss the next time the activity comments are fetched.
 			// Storing the string 'none' is a hack workaround to
 			// avoid unnecessary queries.
-			if ( false === $comments ) {
+			if ( ! $comments ) {
 				$cache_value = 'none';
 			} else {
 				$cache_value = $comments;
 			}
 
 			wp_cache_set( $activity_id, $cache_value, 'bp_activity_comments' );
+		} else {
+			$comments = (array) $comments_cache;
 		}
 
 		return $comments;
@@ -1805,6 +1922,8 @@ class BP_Activity_Activity {
 	 *                                          'secondary_item_id' column in the database.
 	 *     @type int              $offset       Return only those items with an ID greater
 	 *                                          than the offset value.
+	 *     @type int              $offset_lower Return only those items with an ID lower
+	 *                                          than the offset value.
 	 *     @type string           $since        Return only those items that have a
 	 *                                          date_recorded value greater than a
 	 *                                          given MySQL-formatted date.
@@ -1848,6 +1967,11 @@ class BP_Activity_Activity {
 		if ( ! empty( $filter_array['offset'] ) ) {
 			$sid_sql = absint( $filter_array['offset'] );
 			$filter_sql[] = "a.id >= {$sid_sql}";
+		}
+
+		if ( ! empty( $filter_array['offset_lower'] ) ) {
+			$sid_sql = absint( $filter_array['offset_lower'] );
+			$filter_sql[] = "a.id < {$sid_sql}";
 		}
 
 		if ( ! empty( $filter_array['since'] ) ) {

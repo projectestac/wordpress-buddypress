@@ -78,6 +78,44 @@ add_filter( 'bp_get_template_stack', 'bp_add_template_stack_locations' );
 // Turn comments off for BuddyPress pages.
 add_filter( 'comments_open', 'bp_comments_open', 10, 2 );
 
+/**
+ * Removes the filter to `comments_pre_query` to restrict `bp_comments_pre_query`
+ * usage to the `core/comments' block.
+ *
+ * @since 10.7.0
+ *
+ * @param string $block_content The rendered block content.
+ * @return string Unchanged rendered block content.
+ */
+function bp_post_render_core_comments_block( $block_content ) {
+	// Stop forcing comments count to be 0 or comments list to be an empty array.
+	remove_filter( 'comments_pre_query', 'bp_comments_pre_query', 10 );
+	remove_filter( 'render_block', 'bp_post_render_core_comments_block' );
+
+	return $block_content;
+}
+
+/**
+ * Checks the current block being rendered is `core/comments` before hooking to
+ * `comments_pre_query`.
+ *
+ * @since 10.7.0
+ *
+ * @param string|null $pre_render   The pre-rendered content. Default null.
+ * @param array       $parsed_block The block being rendered.
+ * @return string|null Unchanged pre-rendered content.
+ */
+function bp_pre_render_core_comments_block( $pre_render, $parsed_block ) {
+	if ( isset( $parsed_block['blockName'] ) && 'core/comments' === $parsed_block['blockName'] ) {
+		// Force comments count to be 0 or comments list to be an empty array.
+		add_filter( 'comments_pre_query', 'bp_comments_pre_query', 10, 2 );
+		add_filter( 'render_block', 'bp_post_render_core_comments_block' );
+	}
+
+	return $pre_render;
+}
+add_filter( 'pre_render_block', 'bp_pre_render_core_comments_block', 10, 2 );
+
 // Prevent DB query for WP's main loop.
 add_filter( 'posts_pre_query', 'bp_core_filter_wp_query', 10, 2 );
 
@@ -168,7 +206,7 @@ add_filter( 'nav_menu_meta_box_object', 'bp_core_exclude_pages_from_nav_menu_adm
  * @return array
  */
 function bp_core_menu_highlight_parent_page( $retval, $page ) {
-	if ( ! is_buddypress() ) {
+	if ( ! is_buddypress() || ! bp_is_root_blog() ) {
 		return $retval;
 	}
 
@@ -196,7 +234,7 @@ function bp_core_menu_highlight_parent_page( $retval, $page ) {
 	// Duplicate some logic from Walker_Page::start_el() to highlight menu items.
 	if ( ! empty( $page_id ) ) {
 		$_bp_page = get_post( $page_id );
-		if ( in_array( $page->ID, $_bp_page->ancestors, true ) ) {
+		if ( $_bp_page && in_array( $page->ID, $_bp_page->ancestors, true ) ) {
 			$retval[] = 'current_page_ancestor';
 		}
 		if ( $page->ID === $page_id ) {
@@ -461,6 +499,12 @@ add_filter( 'update_welcome_email', 'bp_core_filter_blog_welcome_email', 10, 4 )
  * @return bool              Returns false to stop original WPMU function from continuing.
  */
 function bp_core_activation_signup_blog_notification( $domain, $path, $title, $user, $user_email, $key ) {
+	$is_signup_resend = false;
+	if ( is_admin() && buddypress()->members->admin->signups_page == get_current_screen()->id ) {
+		// The admin is just approving/sending/resending the verification email.
+		$is_signup_resend = true;
+	}
+
 	$args = array(
 		'tokens' => array(
 			'activate-site.url' => esc_url( bp_get_activation_page() . '?key=' . urlencode( $key ) ),
@@ -473,21 +517,30 @@ function bp_core_activation_signup_blog_notification( $domain, $path, $title, $u
 		),
 	);
 
-	$signups = BP_Signup::get(
-		array(
-			'user_login' => $user,
-		)
-	);
-
+	$signup     = bp_members_get_signup_by( 'activation_key', $key );
 	$salutation = $user;
-	if ( $signups && bp_is_active( 'xprofile' ) ) {
-		$signup = $signups['signups'][0];
+	if ( $signup && bp_is_active( 'xprofile' ) ) {
 		if ( isset( $signup->meta[ 'field_' . bp_xprofile_fullname_field_id() ] ) ) {
 			$salutation = $signup->meta[ 'field_' . bp_xprofile_fullname_field_id() ];
 		}
 	}
 
-	bp_send_email( 'core-user-registration-with-blog', array( array( $user_email => $salutation ) ), $args );
+	/**
+	 * Filters if BuddyPress should send an activation key for a new multisite signup.
+	 *
+	 * @since 10.0.0
+	 *
+	 * @param string $user             The user's login name.
+	 * @param string $user_email       The user's email address.
+	 * @param string $key              The activation key created in wpmu_signup_blog().
+	 * @param bool   $is_signup_resend Is the site admin sending this email?
+	 * @param string $domain           The new blog domain.
+	 * @param string $path             The new blog path.
+	 * @param string $title            The site title.
+	 */
+	if ( apply_filters( 'bp_core_signup_send_activation_key_multisite_blog', true, $user, $user_email, $key, $is_signup_resend, $domain, $path, $title ) ) {
+		bp_send_email( 'core-user-registration-with-blog', array( array( $user_email => $salutation ) ), $args );
+	}
 
 	// Return false to stop the original WPMU function from continuing.
 	return false;
@@ -508,6 +561,7 @@ add_filter( 'wpmu_signup_blog_notification', 'bp_core_activation_signup_blog_not
  * @return false|string Returns false to stop original WPMU function from continuing.
  */
 function bp_core_activation_signup_user_notification( $user, $user_email, $key, $meta ) {
+	$is_signup_resend = false;
 	if ( is_admin() ) {
 
 		// If the user is created from the WordPress Add User screen, don't send BuddyPress signup notifications.
@@ -521,17 +575,21 @@ function bp_core_activation_signup_user_notification( $user, $user_email, $key, 
 				return $user;
 			}
 
-		/*
-		 * There can be a case where the user was created without the skip confirmation
-		 * And the super admin goes in pending accounts to resend it. In this case, as the
-		 * meta['password'] is not set, the activation url must be WordPress one.
-		 */
+		// The site admin is approving/resending from the "manage signups" screen.
 		} elseif ( buddypress()->members->admin->signups_page == get_current_screen()->id ) {
+			/*
+			 * There can be a case where the user was created without the skip confirmation
+			 * And the super admin goes in pending accounts to resend it. In this case, as the
+			 * meta['password'] is not set, the activation url must be WordPress one.
+			 */
 			$is_hashpass_in_meta = maybe_unserialize( $meta );
 
 			if ( empty( $is_hashpass_in_meta['password'] ) ) {
 				return $user;
 			}
+
+			// Or the admin is just approving/sending/resending the verification email.
+			$is_signup_resend = true;
 		}
 	}
 
@@ -556,12 +614,50 @@ function bp_core_activation_signup_user_notification( $user, $user_email, $key, 
 			'user.id'      => $user_id,
 		),
 	);
-	bp_send_email( 'core-user-registration', array( array( $user_email => $salutation ) ), $args );
+
+	/**
+	 * Filters if BuddyPress should send an activation key for a new multisite signup.
+	 *
+	 * @since 10.0.0
+	 *
+	 * @param string $user             The user's login name.
+	 * @param string $user_email       The user's email address.
+	 * @param string $key              The activation key created in wpmu_signup_blog().
+	 * @param bool   $is_signup_resend Is the site admin sending this email?
+	 */
+	if ( apply_filters( 'bp_core_signup_send_activation_key_multisite', true, $user, $user_email, $key, $is_signup_resend ) ) {
+		bp_send_email( 'core-user-registration', array( array( $user_email => $salutation ) ), $args );
+	}
 
 	// Return false to stop the original WPMU function from continuing.
 	return false;
 }
 add_filter( 'wpmu_signup_user_notification', 'bp_core_activation_signup_user_notification', 1, 4 );
+
+/**
+ * Ensure that some meta values are set for new multisite signups.
+ *
+ * @since 10.0.0
+ *
+ * @see wpmu_signup_user() for a full description of params.
+ *
+ * @param array $meta Signup meta data. Default empty array.
+ * @return array Signup meta data.
+ */
+function bp_core_add_meta_to_multisite_signups( $meta ) {
+
+	// Ensure that sent_date and count_sent are set in meta.
+	if ( ! isset( $meta['sent_date'] ) ) {
+		$meta['sent_date'] = '0000-00-00 00:00:00';
+	}
+	if ( ! isset( $meta['count_sent'] ) ) {
+		$meta['count_sent'] = 0;
+	}
+
+	return $meta;
+}
+add_filter( 'signup_user_meta', 'bp_core_add_meta_to_multisite_signups' );
+add_filter( 'signup_site_meta', 'bp_core_add_meta_to_multisite_signups' );
 
 /**
  * Filter the page title for BuddyPress pages.

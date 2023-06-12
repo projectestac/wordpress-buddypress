@@ -35,7 +35,7 @@ class BP_XProfile_Field_Type_Telephone extends BP_XProfile_Field_Type {
 		 *
 		 * @since 3.0.0
 		 *
-		 * @param BP_XProfile_Field_Type_Telephone $this Current instance of the field type.
+		 * @param BP_XProfile_Field_Type_Telephone $field_type Current instance of the field type class.
 		 */
 		do_action( 'bp_xprofile_field_type_telephone', $this );
 	}
@@ -60,10 +60,14 @@ class BP_XProfile_Field_Type_Telephone extends BP_XProfile_Field_Type {
 			unset( $raw_properties['user_id'] );
 		}
 
-		$r = bp_parse_args( $raw_properties, array(
-			'type'  => 'tel',
-			'value' => bp_get_the_profile_field_edit_value(),
-		) ); ?>
+		$r = bp_parse_args(
+			$raw_properties,
+			array(
+				'type'  => 'tel',
+				'value' => bp_get_the_profile_field_edit_value(),
+			)
+		);
+		?>
 
 		<legend id="<?php bp_the_profile_field_input_name(); ?>-1">
 			<?php bp_the_profile_field_name(); ?>
@@ -94,9 +98,13 @@ class BP_XProfile_Field_Type_Telephone extends BP_XProfile_Field_Type {
 	 * @param array $raw_properties Optional key/value array of permitted attributes that you want to add.
 	 */
 	public function admin_field_html( array $raw_properties = array() ) {
-		$r = bp_parse_args( $raw_properties, array(
-			'type' => 'tel',
-		) ); ?>
+		$r = bp_parse_args(
+			$raw_properties,
+			array(
+				'type' => 'tel',
+			)
+		);
+		?>
 
 		<label for="<?php bp_the_profile_field_input_name(); ?>" class="screen-reader-text"><?php
 			/* translators: accessibility text */

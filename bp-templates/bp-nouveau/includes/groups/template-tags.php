@@ -3,7 +3,7 @@
  * Groups Template tags
  *
  * @since 3.0.0
- * @version 9.0.0
+ * @version 10.0.0
  */
 
 // Exit if accessed directly.
@@ -157,6 +157,46 @@ function bp_nouveau_groups_activity_post_form() {
 }
 
 /**
+ * Prints the JS Templates to invite new members to join the Group.
+ *
+ * @since 10.0.0
+ */
+function bp_nouveau_group_print_invites_templates() {
+	bp_get_template_part( 'common/js-templates/invites/index' );
+}
+
+/**
+ * Prints the HTML placeholders to invite new members to join the Group.
+ *
+ * @since 10.0.0
+ */
+function bp_nouveau_group_print_invites_placeholders() {
+	if ( bp_is_group_create() ) : ?>
+
+		<h3 class="bp-screen-title creation-step-name">
+			<?php esc_html_e( 'Invite Members', 'buddypress' ); ?>
+		</h3>
+
+	<?php else : ?>
+
+		<h2 class="bp-screen-title">
+			<?php esc_html_e( 'Invite Members', 'buddypress' ); ?>
+		</h2>
+
+	<?php endif; ?>
+
+	<div id="group-invites-container">
+		<nav class="<?php bp_nouveau_single_item_subnav_classes(); ?>" id="subnav" role="navigation" aria-label="<?php esc_attr_e( 'Group invitations menu', 'buddypress' ); ?>"></nav>
+		<div class="group-invites-column">
+			<div class="subnav-filters group-subnav-filters bp-invites-filters"></div>
+			<div class="bp-invites-feedback"></div>
+			<div class="members bp-invites-content"></div>
+		</div>
+	</div>
+	<?php
+}
+
+/**
  * Load the Group Invites UI.
  *
  * @since 3.0.0
@@ -171,7 +211,21 @@ function bp_nouveau_group_invites_interface() {
 	 */
 	do_action( 'bp_before_group_send_invites_content' );
 
-	bp_get_template_part( 'common/js-templates/invites/index' );
+	/**
+	 * Get the templates to manage Group Members using the BP REST API.
+	 *
+	 * @since 10.0.0 Hook to the `wp_footer` action to print the JS templates.
+	 */
+	add_action( 'wp_footer', 'bp_nouveau_group_print_invites_templates' );
+	bp_nouveau_group_print_invites_placeholders();
+
+	/**
+	 * Private hook to preserve backward compatibility with plugins needing the above placeholders to be located
+	 * into: `bp-templates/bp-nouveau/buddypress/common/js-templates/invites/index.php`.
+	 *
+	 * @since 10.0.0
+	 */
+	do_action( '_bp_nouveau_group_print_invites_placeholders' );
 
 	/**
 	 * Fires after the send invites content.
@@ -942,29 +996,16 @@ function bp_nouveau_groups_manage_members_buttons( $args = array() ) {
 
 		// Membership button on groups loop or single group's header
 		} else {
-			/*
-			 * This filter workaround is waiting for a core adaptation
-			 * so that we can directly get the groups button arguments
-			 * instead of the button.
-			 *
-			 * See https://buddypress.trac.wordpress.org/ticket/7126
-			 */
-			add_filter( 'bp_get_group_join_button', 'bp_nouveau_groups_catch_button_args', 100, 1 );
+			$button_args = bp_groups_get_group_join_button_args( $group );
 
-			bp_get_group_join_button( $group );
-
-			remove_filter( 'bp_get_group_join_button', 'bp_nouveau_groups_catch_button_args', 100, 1 );
-
-			if ( isset( bp_nouveau()->groups->button_args ) && bp_nouveau()->groups->button_args ) {
-				$button_args = bp_nouveau()->groups->button_args;
-
-				// If we pass through parent classes merge those into the existing ones
+			if ( $button_args ) {
+				// If we pass through parent classes merge those into the existing ones.
 				if ( $parent_class ) {
 					$parent_class .= ' ' . $button_args['wrapper_class'];
 				}
 
-				// The join or leave group header button should default to 'button'
-				// Reverse the earler button var to set default as 'button' not 'a'
+				// The join or leave group header button should default to 'button'.
+				// Reverse the earlier button var to set default as 'button' not 'a'.
 				if ( empty( $args['button_element'] ) ) {
 					$button_element = 'button';
 				}
@@ -978,6 +1019,7 @@ function bp_nouveau_groups_manage_members_buttons( $args = array() ) {
 					'parent_element'    => $parent_element,
 					'button_element'    => $button_element,
 					'link_text'         => $button_args['link_text'],
+					'link_title'        => $button_args['link_title'],
 					'parent_attr'       => array(
 							'id'    => $button_args['wrapper_id'],
 							'class' => $parent_class,
@@ -990,15 +1032,13 @@ function bp_nouveau_groups_manage_members_buttons( $args = array() ) {
 					),
 				);
 
-			// If button element set add nonce 'href' link to data-attr attr.
-			if ( 'button' === $button_element ) {
-				$buttons['group_membership']['button_attr']['data-bp-nonce'] = $button_args['link_href'];
-			} else {
-			// Else this is an anchor so use an 'href' attr.
-				$buttons['group_membership']['button_attr']['href'] = $button_args['link_href'];
-			}
-
-				unset( bp_nouveau()->groups->button_args );
+				// If button element set add nonce 'href' link to data-attr attr.
+				if ( 'button' === $button_element ) {
+					$buttons['group_membership']['button_attr']['data-bp-nonce'] = $button_args['link_href'];
+				} else {
+					// Else this is an anchor so use an 'href' attr.
+					$buttons['group_membership']['button_attr']['href'] = $button_args['link_href'];
+				}
 			}
 		}
 
@@ -1128,11 +1168,15 @@ function bp_nouveau_group_meta() {
  * @return string HTML Output.
  */
 function bp_nouveau_the_group_meta( $args = array() ) {
-	$r = bp_parse_args( $args, array(
-		'keys'      => array(),
-		'delimeter' => '/',
-		'echo'      => true,
-	), 'nouveau_the_group_meta' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'keys'      => array(),
+			'delimeter' => '/',
+			'echo'      => true,
+		),
+		'nouveau_the_group_meta'
+	);
 
 	$group_meta = (array) bp_nouveau_get_group_meta( $r['keys'] );
 

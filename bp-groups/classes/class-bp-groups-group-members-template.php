@@ -113,19 +113,23 @@ class BP_Groups_Group_Members_Template {
 			$args = bp_core_parse_args_array( $old_args_keys, $function_args );
 		}
 
-		$r = bp_parse_args( $args, array(
-			'group_id'            => bp_get_current_group_id(),
-			'page'                => 1,
-			'per_page'            => 20,
-			'page_arg'            => 'mlpage',
-			'max'                 => false,
-			'exclude'             => false,
-			'exclude_admins_mods' => 1,
-			'exclude_banned'      => 1,
-			'group_role'          => false,
-			'search_terms'        => false,
-			'type'                => 'last_joined',
-		), 'group_members_template' );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'group_id'            => bp_get_current_group_id(),
+				'page'                => 1,
+				'per_page'            => 20,
+				'page_arg'            => 'mlpage',
+				'max'                 => false,
+				'exclude'             => false,
+				'exclude_admins_mods' => 1,
+				'exclude_banned'      => 1,
+				'group_role'          => false,
+				'search_terms'        => false,
+				'type'                => 'last_joined',
+			),
+			'group_members_template'
+		);
 
 		$this->pag_arg  = sanitize_key( $r['page_arg'] );
 		$this->pag_page = bp_sanitize_pagination_arg( $this->pag_arg, $r['page']     );
@@ -239,10 +243,10 @@ class BP_Groups_Group_Members_Template {
 			 * Fires right before the rewinding of members list.
 			 *
 			 * @since 1.0.0
-			 * @since 2.3.0 `$this` parameter added.
+			 * @since 2.3.0 `$template_loop` parameter added.
 			 * @since 2.7.0 Action renamed from `loop_end`.
 			 *
-			 * @param BP_Groups_Group_Members_Template $this Instance of the current Members template.
+			 * @param BP_Groups_Group_Members_Template $template_loop Instance of the current Members template.
 			 */
 			do_action( 'group_members_loop_end', $this );
 
@@ -270,10 +274,10 @@ class BP_Groups_Group_Members_Template {
 			 * Fires if the current member item is the first in the members list.
 			 *
 			 * @since 1.0.0
-			 * @since 2.3.0 `$this` parameter added.
+			 * @since 2.3.0 `$template_loop` parameter added.
 			 * @since 2.7.0 Action renamed from `loop_start`.
 			 *
-			 * @param BP_Groups_Group_Members_Template $this Instance of the current Members template.
+			 * @param BP_Groups_Group_Members_Template $template_loop Instance of the current Members template.
 			 */
 			do_action( 'group_members_loop_start', $this );
 		}

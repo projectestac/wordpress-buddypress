@@ -97,11 +97,11 @@ function bp_nouveau_ajax_joinleave_group() {
 	switch ( $_POST['action'] ) {
 
 		case 'groups_accept_invite':
-			if ( ! groups_check_user_has_invite( bp_loggedin_user_id(), $group_id ) ) {
+			if ( ! groups_check_user_has_invite( bp_displayed_user_id(), $group_id ) ) {
 				wp_send_json_error( $response );
 			}
 
-			if ( ! groups_accept_invite( bp_loggedin_user_id(), $group_id ) ) {
+			if ( ! groups_accept_invite( bp_displayed_user_id(), $group_id ) ) {
 				$response = array(
 					'feedback' => sprintf(
 						'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
@@ -137,7 +137,7 @@ function bp_nouveau_ajax_joinleave_group() {
 			break;
 
 		case 'groups_reject_invite':
-			if ( ! groups_reject_invite( bp_loggedin_user_id(), $group_id ) ) {
+			if ( ! groups_reject_invite( bp_displayed_user_id(), $group_id ) ) {
 				$response = array(
 					'feedback' => sprintf(
 						'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
@@ -283,6 +283,22 @@ function bp_nouveau_ajax_get_users_to_invite() {
 		wp_send_json_error( $response );
 	}
 
+	if ( ! bp_is_group_create() && ! bp_groups_user_can_send_invites( bp_get_current_group_id(), bp_loggedin_user_id() ) ) {
+		$invite_status = bp_group_get_invite_status( bp_get_current_group_id() );
+		if ( 'admins' === $invite_status ) {
+			$message = __( 'Inviting members to join this group is restricted to Group Administrators.', 'buddypress' );
+		} else {
+			$message = __( 'Inviting members to join this group is restricted to Group Moderators and Administrators.', 'buddypress' );
+		}
+
+		wp_send_json_error(
+			array(
+				'feedback' => $message,
+				'type'     => 'error',
+			)
+		);
+	}
+
 	$request = bp_parse_args(
 		$_POST,
 		array(
@@ -331,6 +347,11 @@ function bp_nouveau_ajax_get_users_to_invite() {
 			if ( 0 === (int) bp_get_total_friend_count( bp_loggedin_user_id() ) ) {
 				$error = array(
 					'feedback' => __( 'You have no friends!', 'buddypress' ),
+					'type'     => 'info',
+				);
+			} else {
+				$error = array(
+					'feedback' => __( 'No friends were found. Try another filter.', 'buddypress' ),
 					'type'     => 'info',
 				);
 			}

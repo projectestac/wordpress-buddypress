@@ -69,7 +69,7 @@ class BP_REST_XProfile_Fields_Endpoint extends WP_REST_Controller {
 					'callback'            => array( $this, 'get_item' ),
 					'permission_callback' => array( $this, 'get_item_permissions_check' ),
 					'args'                => array(
-						'user_id' => array(
+						'user_id'          => array(
 							'description'       => __( 'Required if you want to load a specific user\'s data.', 'buddypress' ),
 							'default'           => 0,
 							'type'              => 'integer',
@@ -135,6 +135,11 @@ class BP_REST_XProfile_Fields_Endpoint extends WP_REST_Controller {
 
 		if ( empty( $request->get_param( 'member_type' ) ) ) {
 			$args['member_type'] = false;
+		}
+
+		$include_groups = $request->get_param( 'include_groups' );
+		if ( $include_groups && ! $args['profile_group_id'] ) {
+			$args['profile_group_id'] = $include_groups;
 		}
 
 		/**
@@ -766,7 +771,7 @@ class BP_REST_XProfile_Fields_Endpoint extends WP_REST_Controller {
 			'collection' => array(
 				'href' => rest_url( $base ),
 			),
-			'group' => array(
+			'group'      => array(
 				'href'       => rest_url( $group_base . $field->group_id ),
 				'embeddable' => true,
 			),
@@ -1058,7 +1063,7 @@ class BP_REST_XProfile_Fields_Endpoint extends WP_REST_Controller {
 						'type'        => 'string',
 						'enum'        => array_keys( bp_xprofile_get_visibility_levels() ),
 					),
-					'options'  => array(
+					'options'           => array(
 						'context'     => array( 'view', 'edit' ),
 						'description' => __( 'Options of the profile field.', 'buddypress' ),
 						'type'        => 'array',
@@ -1169,12 +1174,21 @@ class BP_REST_XProfile_Fields_Endpoint extends WP_REST_Controller {
 			'validate_callback' => 'rest_validate_request_arg',
 		);
 
+		$params['include_groups'] = array(
+			'description'       => __( 'Ensure result set inludes specific profile field groups.', 'buddypress' ),
+			'default'           => array(),
+			'type'              => 'array',
+			'items'             => array( 'type' => 'integer' ),
+			'sanitize_callback' => 'wp_parse_id_list',
+			'validate_callback' => 'rest_validate_request_arg',
+		);
+
 		$params['exclude_groups'] = array(
 			'description'       => __( 'Ensure result set excludes specific profile field groups.', 'buddypress' ),
 			'default'           => array(),
 			'type'              => 'array',
 			'items'             => array( 'type' => 'integer' ),
-			'sanitize_callback' => 'bp_rest_sanitize_string_list',
+			'sanitize_callback' => 'wp_parse_id_list',
 			'validate_callback' => 'rest_validate_request_arg',
 		);
 

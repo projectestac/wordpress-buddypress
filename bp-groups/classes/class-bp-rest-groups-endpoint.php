@@ -66,11 +66,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 					'callback'            => array( $this, 'get_item' ),
 					'permission_callback' => array( $this, 'get_item_permissions_check' ),
 					'args'                => array(
-						'context'         => $this->get_context_param(
-							array(
-								'default' => 'view',
-							)
-						),
+						'context'         => $this->get_context_param( array( 'default' => 'view' ) ),
 						'populate_extras' => array(
 							'description'       => __( 'Whether to fetch extra BP data about the returned group.', 'buddypress' ),
 							'context'           => array( 'view', 'edit' ),
@@ -142,8 +138,8 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 			'meta_query'   => $request->get_param( 'meta' ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			'group_type'   => $request->get_param( 'group_type' ),
 			'show_hidden'  => $request->get_param( 'show_hidden' ),
-			'per_page'     => $request->get_param( 'per_page' ),
 			'status'       => $request->get_param( 'status' ),
+			'per_page'     => $request->get_param( 'per_page' ),
 			'page'         => $request->get_param( 'page' ),
 		);
 
@@ -713,7 +709,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 	 *
 	 * @since 5.0.0
 	 *
-	 * @param BP_Groups_Group $item     Group object.
+	 * @param BP_Groups_Group $item     The group object.
 	 * @param WP_REST_Request $request  Full details about the request.
 	 * @return WP_REST_Response
 	 */
@@ -722,7 +718,8 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 			'id'                 => $item->id,
 			'creator_id'         => bp_get_group_creator_id( $item ),
 			'parent_id'          => $item->parent_id,
-			'date_created'       => bp_rest_prepare_date_response( $item->date_created ),
+			'date_created'       => bp_rest_prepare_date_response( $item->date_created, get_date_from_gmt( $item->date_created ) ),
+			'date_created_gmt'   => bp_rest_prepare_date_response( $item->date_created ),
 			'created_since'      => bp_core_time_since( $item->date_created ),
 			'description'        => array(
 				'raw'      => $item->description,
@@ -736,7 +733,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 			'types'              => bp_groups_get_group_type( $item->id, false ),
 			'admins'             => array(),
 			'mods'               => array(),
-			'total_member_count' => null,
+			'total_member_count' => 0,
 			'last_activity'      => null,
 			'last_activity_diff' => null,
 		);
@@ -773,7 +770,8 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 		// If this is the 'edit' context or 'populate_extras' has been requested.
 		if ( 'edit' === $context || true === $request->get_param( 'populate_extras' ) ) {
 			$data['total_member_count'] = (int) $item->total_member_count;
-			$data['last_activity']      = bp_rest_prepare_date_response( $item->last_activity );
+			$data['last_activity']      = bp_rest_prepare_date_response( $item->last_activity, get_date_from_gmt( $item->last_activity ) );
+			$data['last_activity_gmt']  = bp_rest_prepare_date_response( $item->last_activity );
 			$data['last_activity_diff'] = bp_get_group_last_active( $item );
 		}
 
@@ -817,6 +815,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 		$data     = $this->filter_response_by_context( $data, $context );
 		$response = rest_ensure_response( $data );
 
+		// Add prepare links.
 		$response->add_links( $this->prepare_links( $item ) );
 
 		/**
@@ -826,7 +825,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 		 *
 		 * @param WP_REST_Response $response The response data.
 		 * @param WP_REST_Request  $request  Request used to generate the response.
-		 * @param BP_Groups_Group  $item     Group object.
+		 * @param BP_Groups_Group  $item     The group object.
 		 */
 		return apply_filters( 'bp_rest_groups_prepare_value', $response, $request, $item );
 	}
@@ -836,7 +835,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 	 *
 	 * @since 5.0.0
 	 *
-	 * @param WP_REST_Request $request Request object.
+	 * @param WP_REST_Request $request Full details about the request.
 	 * @return stdClass|WP_Error
 	 */
 	protected function prepare_item_for_database( $request ) {
@@ -948,9 +947,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 	 * @return array
 	 */
 	protected function prepare_links( $group ) {
-		$base = sprintf( '/%s/%s/', $this->namespace, $this->rest_base );
-
-		// Entity meta.
+		$base  = sprintf( '/%s/%s/', $this->namespace, $this->rest_base );
 		$links = array(
 			'self'       => array(
 				'href' => rest_url( $base . $group->id ),
@@ -958,11 +955,15 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 			'collection' => array(
 				'href' => rest_url( $base ),
 			),
-			'user'    => array(
+		);
+
+		// Embed group creator if available.
+		if ( ! empty( $group->creator_id ) ) {
+			$links['user'] = array(
 				'href'       => bp_rest_get_object_url( $group->creator_id, 'members' ),
 				'embeddable' => true,
-			),
-		);
+			);
+		}
 
 		// Embed parent group if available.
 		if ( ! empty( $group->parent ) ) {
@@ -972,13 +973,74 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 			);
 		}
 
+		// Actions.
+
+		$user_id = bp_loggedin_user_id();
+
+		if ( is_user_logged_in() && false === bp_group_is_user_banned( $group->id, $user_id ) ) {
+			$membership_namespace = "{$this->rest_base}/membership-requests";
+			$request_id           = groups_check_for_membership_request( $user_id, $group->id );
+			$is_group_member      = wp_validate_boolean( $group->is_member );
+
+			switch ( true ) {
+				// The logged in user is not a member of a private group, action to: request a membership.
+				case 'private' === $group->status && false === $is_group_member:
+					$links['bp-action-group-membership-request-membership'] = array(
+						'href'     => rest_url( sprintf( '/%1$s/%2$s/', $this->namespace, $membership_namespace ) ),
+						'group_id' => $group->id,
+						'user_id'  => $user_id,
+					);
+					break;
+
+				// The logged in user already requested a membership to the group, action to: withdraw the request.
+				case is_numeric( $request_id ):
+					$links['bp-action-group-membership-withdraw-request'] = array(
+						'href' => bp_rest_get_object_url( $request_id, $membership_namespace ),
+					);
+					break;
+
+				// The logged in user is a member of the group, action to: leave.
+				case true === $is_group_member:
+					$links['bp-action-group-leave'] = array(
+						'href' => bp_rest_get_object_url( $user_id, "{$this->rest_base}/{$group->id}/members" ),
+					);
+					break;
+
+				// The logged in user is not a member of a public group, action to: join.
+				case 'public' === $group->status && false === $is_group_member:
+					$links['bp-action-group-join'] = array(
+						'href'     => rest_url( sprintf( '/%1$s/%2$s/', $this->namespace, "{$this->rest_base}/{$group->id}/members" ) ),
+						'group_id' => $group->id,
+						'user_id'  => $user_id,
+					);
+					break;
+
+				// The logged in user is invited to join the group, actions to: accept and reject invite.
+				case true === $group->is_invited:
+					$invites_class = new BP_Groups_Invitation_Manager();
+					$ids           = $invites_class->get_invitations(
+						array(
+							'user_id' => $user_id,
+							'item_id' => $group->id,
+							'fields'  => 'ids',
+						)
+					);
+
+					$invite_action = array( 'href' => bp_rest_get_object_url( $ids[0], "{$this->rest_base}/{$group->id}/invites" ) );
+
+					$links['bp-action-group-accept-invite'] = $invite_action;
+					$links['bp-action-group-reject-invite'] = $invite_action;
+					break;
+			}
+		}
+
 		/**
 		 * Filter links prepared for the REST response.
 		 *
 		 * @since 5.0.0
 		 *
-		 * @param array           $links  The prepared links of the REST response.
-		 * @param BP_Groups_Group $group  Group object.
+		 * @param array           $links The prepared links of the REST response.
+		 * @param BP_Groups_Group $group Group object.
 		 */
 		return apply_filters( 'bp_rest_groups_prepare_links', $links, $group );
 	}
@@ -1219,9 +1281,16 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 					),
 					'date_created'       => array(
 						'context'     => array( 'view', 'edit', 'embed' ),
-						'description' => __( "The date the Group was created, in the site's timezone.", 'buddypress' ),
+						'description' => __( 'The date the Group was created, in the site\'s timezone.', 'buddypress' ),
 						'readonly'    => true,
-						'type'        => 'string',
+						'type'        => array( 'string', 'null' ),
+						'format'      => 'date-time',
+					),
+					'date_created_gmt'   => array(
+						'context'     => array( 'view', 'edit' ),
+						'description' => __( 'The date the Group was created, as GMT.', 'buddypress' ),
+						'readonly'    => true,
+						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 					),
 					'created_since'      => array(
@@ -1267,14 +1336,21 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 					),
 					'last_activity'      => array(
 						'context'     => array( 'view', 'edit', 'embed' ),
-						'description' => __( "The date the Group was last active, in the site's timezone.", 'buddypress' ),
-						'type'        => 'string',
+						'description' => __( 'The date the Group was last active, in the site\'s timezone.', 'buddypress' ),
 						'readonly'    => true,
+						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 					),
-					'last_activity_diff'  => array(
+					'last_activity_gmt'  => array(
+						'context'     => array( 'view', 'edit' ),
+						'description' => __( 'The date the Group was last active, as GMT.', 'buddypress' ),
+						'readonly'    => true,
+						'type'        => array( 'string', 'null' ),
+						'format'      => 'date-time',
+					),
+					'last_activity_diff' => array(
 						'context'     => array( 'view', 'edit', 'embed' ),
-						'description' => __( "The human diff time the Group was last active, in the site's timezone.", 'buddypress' ),
+						'description' => __( 'The human diff time the Group was last active, in the site\'s timezone.', 'buddypress' ),
 						'type'        => 'string',
 						'readonly'    => true,
 					),
@@ -1372,7 +1448,7 @@ class BP_REST_Groups_Endpoint extends WP_REST_Controller {
 		);
 
 		$params['user_id'] = array(
-			'description'       => __( 'Pass a user_id to limit to only Groups that this user is a member of.', 'buddypress' ),
+			'description'       => __( 'Pass a user ID to limit to only Groups that this user is a member of.', 'buddypress' ),
 			'default'           => 0,
 			'type'              => 'integer',
 			'sanitize_callback' => 'absint',

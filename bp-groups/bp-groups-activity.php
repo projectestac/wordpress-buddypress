@@ -521,20 +521,24 @@ function groups_record_activity( $args = '' ) {
 		}
 	}
 
-	$r = bp_parse_args( $args, array(
-		'id'                => false,
-		'user_id'           => bp_loggedin_user_id(),
-		'action'            => '',
-		'content'           => '',
-		'primary_link'      => '',
-		'component'         => buddypress()->groups->id,
-		'type'              => false,
-		'item_id'           => false,
-		'secondary_item_id' => false,
-		'recorded_time'     => bp_core_current_time(),
-		'hide_sitewide'     => $hide_sitewide,
-		'error_type'        => 'bool'
-	), 'groups_record_activity' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'id'                => false,
+			'user_id'           => bp_loggedin_user_id(),
+			'action'            => '',
+			'content'           => '',
+			'primary_link'      => '',
+			'component'         => buddypress()->groups->id,
+			'type'              => false,
+			'item_id'           => false,
+			'secondary_item_id' => false,
+			'recorded_time'     => bp_core_current_time(),
+			'hide_sitewide'     => $hide_sitewide,
+			'error_type'        => 'bool',
+		),
+		'groups_record_activity'
+	);
 
 	return bp_activity_add( $r );
 }
@@ -558,28 +562,43 @@ function groups_record_activity( $args = '' ) {
 function groups_post_update( $args = '' ) {
 	$bp = buddypress();
 
-	$r = bp_parse_args( $args, array(
-		'content'    => false,
-		'user_id'    => bp_loggedin_user_id(),
-		'group_id'   => 0,
-		'error_type' => 'bool'
-	), 'groups_post_update' );
+	$r = bp_parse_args(
+		$args,
+		array(
+			'content'    => false,
+			'user_id'    => bp_loggedin_user_id(),
+			'group_id'   => 0,
+			'error_type' => 'bool',
+		),
+		'groups_post_update'
+	);
 
 	$group_id = (int) $r['group_id'];
 	if ( ! $group_id && ! empty( $bp->groups->current_group->id ) ) {
 		$group_id = (int) $bp->groups->current_group->id;
 	}
 
-	$content = $r['content'];
-	$user_id = (int) $r['user_id'];
-	if ( ! $content || ! strlen( trim( $content ) ) || ! $user_id || ! $group_id ) {
-		return false;
-	}
+	$content          = $r['content'];
+	$user_id          = (int) $r['user_id'];
+	$is_user_active   = bp_is_user_active( $user_id );
+	$is_group_allowed = $group_id && ( bp_current_user_can( 'bp_moderate' ) || groups_is_user_member( $user_id, $group_id ) );
 
-	$bp->groups->current_group = groups_get_group( $group_id );
+	if ( ! $content || ! strlen( trim( $content ) ) || ! $is_user_active || ! $is_group_allowed ) {
+		if ( 'wp_error' === $r['error_type'] ) {
+			$error_code         = 'bp_activity_missing_content';
+			$error_code_message = __( 'Please enter some content to post.', 'buddypress' );
 
-	// Be sure the user is a member of the group before posting.
-	if ( ! bp_current_user_can( 'bp_moderate' ) && ! groups_is_user_member( $user_id, $group_id ) ) {
+			if ( ! $is_user_active ) {
+				$error_code         = 'bp_activity_inactive_user';
+				$error_code_message = __( 'User account has not yet been activated.', 'buddypress' );
+			} elseif ( ! $is_group_allowed ) {
+				$error_code         = 'bp_activity_unallowed_group';
+				$error_code_message = __( 'You need to be a member of this group to share updates with their members.', 'buddypress' );
+			}
+
+			return new WP_Error( $error_code, $error_code_message );
+		}
+
 		return false;
 	}
 
@@ -881,7 +900,7 @@ function bp_groups_leave_group_delete_recent_activity( $group_id, $user_id ) {
 	$membership = new BP_Groups_Member( $user_id, $group_id );
 
 	// Check the time period, and maybe delete their recent group activity.
-	if ( time() <= strtotime( '+5 minutes', (int) strtotime( $membership->date_modified ) ) ) {
+	if ( $membership->date_modified && time() <= strtotime( '+5 minutes', (int) strtotime( $membership->date_modified ) ) ) {
 		bp_activity_delete( array(
 			'component' => buddypress()->groups->id,
 			'type'      => 'joined_group',

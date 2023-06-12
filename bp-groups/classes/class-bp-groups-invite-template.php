@@ -93,13 +93,17 @@ class BP_Groups_Invite_Template {
 			$args = bp_core_parse_args_array( $old_args_keys, $function_args );
 		}
 
-		$r = bp_parse_args( $args, array(
-			'page'     => 1,
-			'per_page' => 10,
-			'page_arg' => 'invitepage',
-			'user_id'  => bp_loggedin_user_id(),
-			'group_id' => bp_get_current_group_id(),
-		), 'groups_invite_template' );
+		$r = bp_parse_args(
+			$args,
+			array(
+				'page'     => 1,
+				'per_page' => 10,
+				'page_arg' => 'invitepage',
+				'user_id'  => bp_loggedin_user_id(),
+				'group_id' => bp_get_current_group_id(),
+			),
+			'groups_invite_template'
+		);
 
 		$this->pag_arg  = sanitize_key( $r['page_arg'] );
 		$this->pag_page = bp_sanitize_pagination_arg( $this->pag_arg, $r['page']     );
@@ -197,10 +201,10 @@ class BP_Groups_Invite_Template {
 			 * Fires right before the rewinding of invites list.
 			 *
 			 * @since 1.1.0
-			 * @since 2.3.0 `$this` parameter added.
+			 * @since 2.3.0 `$template_loop` parameter added.
 			 * @since 2.7.0 Action renamed from `loop_start`.
 			 *
-			 * @param BP_Groups_Invite_Template $this Instance of the current Invites template.
+			 * @param BP_Groups_Invite_Template $template_loop Instance of the current Invites template.
 			 */
 			do_action( 'group_invitation_loop_end', $this );
 
@@ -299,10 +303,10 @@ class BP_Groups_Invite_Template {
 			 * Fires if the current invite item is the first in the loop.
 			 *
 			 * @since 1.1.0
-			 * @since 2.3.0 `$this` parameter added.
+			 * @since 2.3.0 `$template_loop` parameter added.
 			 * @since 2.7.0 Action renamed from `loop_start`.
 			 *
-			 * @param BP_Groups_Invite_Template $this Instance of the current Invites template.
+			 * @param BP_Groups_Invite_Template $template_loop Instance of the current Invites template.
 			 */
 			do_action( 'group_invitation_loop_start', $this );
 		}

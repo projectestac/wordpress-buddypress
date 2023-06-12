@@ -1,6 +1,6 @@
 <?php
 /**
- * Messages: View action handler
+ * Messages: View action handler.
  *
  * @package BuddyPress
  * @subpackage MessageActions
@@ -9,6 +9,8 @@
 
 /**
  * Process a request to view a single message thread.
+ *
+ * @return bool False if not a single conversation.
  */
 function messages_action_conversation() {
 
@@ -51,6 +53,7 @@ function messages_action_conversation() {
 	 * If an admin visits a thread, it shouldn't change the read status.
 	 */
 	if ( bp_is_my_profile() ) {
+		// This is marking the messages as read inside the BP Messages component's recipient table.
 		messages_mark_thread_read( $thread_id );
 	}
 

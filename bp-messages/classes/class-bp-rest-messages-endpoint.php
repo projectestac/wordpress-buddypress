@@ -11,6 +11,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Messages endpoints.
  *
+ * /messages/
+ * /messages/{id}
+ * /messages/{thread_id}
+ *
  * @since 5.0.0
  */
 class BP_REST_Messages_Endpoint extends WP_REST_Controller {
@@ -116,12 +120,16 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 	 */
 	public function get_items( $request ) {
 		$args = array(
-			'user_id'      => $request->get_param( 'user_id' ),
-			'box'          => $request->get_param( 'box' ),
-			'type'         => $request->get_param( 'type' ),
-			'page'         => $request->get_param( 'page' ),
-			'per_page'     => $request->get_param( 'per_page' ),
-			'search_terms' => $request->get_param( 'search' ),
+			'user_id'             => $request->get_param( 'user_id' ),
+			'box'                 => $request->get_param( 'box' ),
+			'type'                => $request->get_param( 'type' ),
+			'page'                => $request->get_param( 'page' ),
+			'per_page'            => $request->get_param( 'per_page' ),
+			'search_terms'        => $request->get_param( 'search' ),
+			'recipients_page'     => $request->get_param( 'recipients_page' ),
+			'recipients_per_page' => $request->get_param( 'recipients_per_page' ),
+			'messages_page'       => $request->get_param( 'messages_page' ),
+			'messages_per_page'   => $request->get_param( 'messages_per_page' ),
 		);
 
 		// Include the meta_query for starred messages.
@@ -864,10 +872,16 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 	 * @return array                     The recipient data for the REST response.
 	 */
 	public function prepare_recipient_for_response( $recipient, $request ) {
-		$data = array(
-			'id'        => (int) $recipient->id,
-			'user_id'   => (int) $recipient->user_id,
-			'user_link' => esc_url( bp_core_get_user_domain( $recipient->user_id ) ),
+		$user_info = get_userdata( (int) $recipient->user_id );
+		$data      = array(
+			'id'           => (int) $recipient->id,
+			'is_deleted'   => (int) $recipient->is_deleted,
+			'name'         => (string) $user_info->display_name,
+			'sender_only'  => (int) $recipient->sender_only,
+			'thread_id'    => (int) $recipient->thread_id,
+			'unread_count' => (int) $recipient->unread_count,
+			'user_id'      => (int) $recipient->user_id,
+			'user_link'    => esc_url( bp_core_get_user_domain( $recipient->user_id ) ),
 		);
 
 		// Fetch the user avatar urls (Full & thumb).
@@ -882,16 +896,6 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 				);
 			}
 		}
-
-		$data = array_merge(
-			$data,
-			array(
-				'thread_id'    => (int) $recipient->thread_id,
-				'unread_count' => (int) $recipient->unread_count,
-				'sender_only'  => (int) $recipient->sender_only,
-				'is_deleted'   => (int) $recipient->is_deleted,
-			)
-		);
 
 		/**
 		 * Filter a recipient value returned from the API.
@@ -910,7 +914,7 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 	 *
 	 * @since 5.0.0
 	 *
-	 * @param BP_Messages_Thread $thread  Thread object.
+	 * @param BP_Messages_Thread $thread  The thread object.
 	 * @param WP_REST_Request    $request Full details about the request.
 	 * @return WP_REST_Response
 	 */
@@ -921,9 +925,9 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 		}
 
 		$data = array(
-			'id'             => $thread->thread_id,
-			'message_id'     => $thread->last_message_id,
-			'last_sender_id' => $thread->last_sender_id,
+			'id'             => (int) $thread->thread_id,
+			'message_id'     => (int) $thread->last_message_id,
+			'last_sender_id' => (int) $thread->last_sender_id,
 			'subject'        => array(
 				'raw'      => $thread->last_message_subject,
 				'rendered' => apply_filters( 'bp_get_message_thread_subject', wp_staticize_emoji( $thread->last_message_subject ) ),
@@ -936,9 +940,10 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 				'raw'      => $thread->last_message_content,
 				'rendered' => apply_filters( 'bp_get_message_thread_content', wp_staticize_emoji( $thread->last_message_content ) ),
 			),
-			'date'           => bp_rest_prepare_date_response( $thread->last_message_date ),
+			'date'           => bp_rest_prepare_date_response( $thread->last_message_date, get_date_from_gmt( $thread->last_message_date ) ),
+			'date_gmt'       => bp_rest_prepare_date_response( $thread->last_message_date ),
 			'unread_count'   => ! empty( $thread->unread_count ) ? absint( $thread->unread_count ) : 0,
-			'sender_ids'     => $thread->sender_ids,
+			'sender_ids'     => (array) $thread->sender_ids,
 			'recipients'     => array(),
 			'messages'       => array(),
 		);
@@ -949,8 +954,8 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 		}
 
 		// Loop through recipients to prepare them for the response.
-		foreach ( $thread->get_recipients() as $recipient ) {
-			$data['recipients'][ $recipient->user_id ] = $this->prepare_recipient_for_response( $recipient, $request );
+		foreach ( $thread->recipients as $recipient ) {
+			$data['recipients'][] = $this->prepare_recipient_for_response( $recipient, $request );
 		}
 
 		// Pluck starred message ids.
@@ -961,6 +966,7 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 		$data     = $this->filter_response_by_context( $data, $context );
 		$response = rest_ensure_response( $data );
 
+		// Add prepare links.
 		$response->add_links( $this->prepare_links( $thread ) );
 
 		/**
@@ -981,7 +987,7 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 	 * @since 5.0.0
 	 *
 	 * @param BP_Messages_Thread $thread  Thread object.
-	 * @return array Links for the given thread.
+	 * @return array
 	 */
 	protected function prepare_links( $thread ) {
 		$base = sprintf( '/%s/%s/', $this->namespace, $this->rest_base );
@@ -997,7 +1003,7 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 		);
 
 		// Add star links for each message of the thread.
-		if ( bp_is_active( 'messages', 'star' ) ) {
+		if ( is_user_logged_in() && bp_is_active( 'messages', 'star' ) ) {
 			$starred_base = $base . bp_get_messages_starred_slug() . '/';
 
 			foreach ( $thread->messages as $message ) {
@@ -1012,8 +1018,8 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 		 *
 		 * @since 5.0.0
 		 *
-		 * @param array              $links   The prepared links of the REST response.
-		 * @param BP_Messages_Thread $thread  Thread object.
+		 * @param array              $links  The prepared links of the REST response.
+		 * @param BP_Messages_Thread $thread The thread object.
 		 */
 		return apply_filters( 'bp_rest_messages_prepare_links', $links, $thread );
 	}
@@ -1269,9 +1275,16 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 					),
 					'date'                => array(
 						'context'     => array( 'view', 'edit' ),
-						'description' => __( "The date the latest message of the Thread, in the site's timezone.", 'buddypress' ),
+						'description' => __( 'Dat of the latest message of the Thread, in the site\'s timezone.', 'buddypress' ),
 						'readonly'    => true,
-						'type'        => 'string',
+						'type'        => array( 'string', 'null' ),
+						'format'      => 'date-time',
+					),
+					'date_gmt'            => array(
+						'context'     => array( 'view', 'edit' ),
+						'description' => __( 'Date of the latest message of the Thread, as GMT.', 'buddypress' ),
+						'readonly'    => true,
+						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 					),
 					'unread_count'        => array(
@@ -1369,6 +1382,44 @@ class BP_REST_Messages_Endpoint extends WP_REST_Controller {
 			'default'           => bp_loggedin_user_id(),
 			'type'              => 'integer',
 			'required'          => true,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
+		);
+
+		$params['recipients_page'] = array(
+			'description'       => __( 'Current page of the recipients collection.', 'buddypress' ),
+			'type'              => 'integer',
+			'default'           => 1,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
+			'minimum'           => 1,
+		);
+
+		$params['recipients_per_page'] = array(
+			'description'       => __( 'Maximum number of recipients to be returned in result set.', 'buddypress' ),
+			'type'              => 'integer',
+			'default'           => 10,
+			'minimum'           => 1,
+			'maximum'           => 100,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
+		);
+
+		$params['messages_page'] = array(
+			'description'       => __( 'Current page of the messages collection.', 'buddypress' ),
+			'type'              => 'integer',
+			'default'           => 1,
+			'sanitize_callback' => 'absint',
+			'validate_callback' => 'rest_validate_request_arg',
+			'minimum'           => 1,
+		);
+
+		$params['messages_per_page'] = array(
+			'description'       => __( 'Maximum number of messages to be returned in result set.', 'buddypress' ),
+			'type'              => 'integer',
+			'default'           => 10,
+			'minimum'           => 1,
+			'maximum'           => 100,
 			'sanitize_callback' => 'absint',
 			'validate_callback' => 'rest_validate_request_arg',
 		);

@@ -65,16 +65,29 @@ class BP_Activity_Component extends BP_Component {
 		}
 
 		// Load Akismet support if Akismet is configured.
-		$akismet_key = bp_get_option( 'wordpress_api_key' );
+		if ( defined( 'AKISMET_VERSION' ) && class_exists( 'Akismet' ) ) {
+			$akismet_key = bp_get_option( 'wordpress_api_key' );
 
-		/** This filter is documented in bp-activity/bp-activity-akismet.php */
-		if ( defined( 'AKISMET_VERSION' ) && class_exists( 'Akismet' ) && ( ! empty( $akismet_key ) || defined( 'WPCOM_API_KEY' ) ) && apply_filters( 'bp_activity_use_akismet', bp_is_akismet_active() ) ) {
-			$includes[] = 'akismet';
+			/** This filter is documented in bp-activity/bp-activity-akismet.php */
+			if ( ( ! empty( $akismet_key ) || defined( 'WPCOM_API_KEY' ) ) && apply_filters( 'bp_activity_use_akismet', bp_is_akismet_active() ) ) {
+				$includes[] = 'akismet';
+			}
 		}
 
 		// Embeds.
 		if ( bp_is_active( $this->id, 'embeds' ) ) {
 			$includes[] = 'embeds';
+		}
+
+		/*
+		 * Activity blocks feature.
+		 *
+		 * By default this feature is inactive. We're including specific block functions
+		 * in version 11.0.0 so these can be used by BuddyPress Add-ons such as BP Attachments
+		 * or BP Activity Block Editor.
+		 */
+		if ( bp_is_active( $this->id, 'blocks' ) ) {
+			$includes[] = 'block-functions';
 		}
 
 		if ( is_admin() ) {
@@ -367,7 +380,7 @@ class BP_Activity_Component extends BP_Component {
 				'parent'   => 'my-account-' . $this->id,
 				'id'       => 'my-account-' . $this->id . '-personal',
 				'title'    => _x( 'Personal', 'My Account Activity sub nav', 'buddypress' ),
-				'href'     => $activity_link,
+				'href'     => trailingslashit( $activity_link . 'just-me' ),
 				'position' => 10
 			);
 
@@ -499,8 +512,8 @@ class BP_Activity_Component extends BP_Component {
 					'wp-components',
 					'wp-i18n',
 					'wp-block-editor',
+					'wp-server-side-render',
 					'bp-block-data',
-					'bp-block-components',
 				),
 				'style'              => 'bp-latest-activities-block',
 				'style_url'          => plugins_url( 'css/blocks/latest-activities.css', dirname(  __FILE__ ) ),
@@ -545,5 +558,24 @@ class BP_Activity_Component extends BP_Component {
 		}
 
 		parent::blocks_init( $blocks );
+	}
+
+	/**
+	 * Add the Activity directory state.
+	 *
+	 * @since 10.0.0
+	 *
+	 * @param array   $states Optional. See BP_Component::admin_directory_states() for description.
+	 * @param WP_Post $post   Optional. See BP_Component::admin_directory_states() for description.
+	 * @return array          See BP_Component::admin_directory_states() for description.
+	 */
+	public function admin_directory_states( $states = array(), $post = null ) {
+		$bp = buddypress();
+
+		if ( isset( $bp->pages->activity->id ) && (int) $bp->pages->activity->id === (int) $post->ID ) {
+			$states['page_for_activity_directory'] = _x( 'BP Activity Page', 'page label', 'buddypress' );
+		}
+
+		return parent::admin_directory_states( $states, $post );
 	}
 }

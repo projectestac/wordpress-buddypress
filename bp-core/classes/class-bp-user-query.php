@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * Member directories, the Friends component, etc.
  *
  * @since 1.7.0
+ * @since 10.0.0 Added $date_query parameter.
  *
  * @param array $query {
  *     Query arguments. All items are optional.
@@ -49,6 +50,9 @@ defined( 'ABSPATH' ) || exit;
  *                                                  associated with $meta_key matches $meta_value. Default: false.
  *     @type array             $xprofile_query      Filter results by xprofile data. Requires the xprofile component.
  *                                                  See {@see BP_XProfile_Query} for details.
+ *     @type array             $date_query          Filter results by member last activity date. See first parameter of
+ *                                                  {@link WP_Date_Query::__construct()} for syntax. Only applicable if
+ *                                                  $type is either 'active', 'random', 'newest', or 'online'.
  *     @type bool              $populate_extras     True if you want to fetch extra metadata
  *                                                  about returned users, such as total group and friend counts.
  *     @type string            $count_total         Determines how BP_User_Query will do a count of total users matching
@@ -154,32 +158,36 @@ class BP_User_Query {
 		$this->setup_hooks();
 
 		if ( ! empty( $this->query_vars_raw ) ) {
-			$this->query_vars = wp_parse_args( $this->query_vars_raw, array(
-				'type'                => 'newest',
-				'per_page'            => 0,
-				'page'                => 1,
-				'user_id'             => 0,
-				'search_terms'        => false,
-				'search_wildcard'     => 'both',
-				'include'             => false,
-				'exclude'             => false,
-				'user_ids'            => false,
-				'member_type'         => '',
-				'member_type__in'     => '',
-				'member_type__not_in' => '',
-				'meta_key'            => false,
-				'meta_value'          => false,
-				'xprofile_query'      => false,
-				'populate_extras'     => true,
-				'count_total'         => 'count_query'
-			) );
+			$this->query_vars = bp_parse_args(
+				$this->query_vars_raw,
+				array(
+					'type'                => 'newest',
+					'per_page'            => 0,
+					'page'                => 1,
+					'user_id'             => 0,
+					'search_terms'        => false,
+					'search_wildcard'     => 'both',
+					'include'             => false,
+					'exclude'             => false,
+					'user_ids'            => false,
+					'member_type'         => '',
+					'member_type__in'     => '',
+					'member_type__not_in' => '',
+					'meta_key'            => false,
+					'meta_value'          => false,
+					'xprofile_query'      => false,
+					'date_query'          => false,
+					'populate_extras'     => true,
+					'count_total'         => 'count_query',
+				)
+			);
 
 			/**
 			 * Fires before the construction of the BP_User_Query query.
 			 *
 			 * @since 1.7.0
 			 *
-			 * @param BP_User_Query $this Current instance of the BP_User_Query. Passed by reference.
+			 * @param BP_User_Query $user_query Current instance of the BP_User_Query. Passed by reference.
 			 */
 			do_action_ref_array( 'bp_pre_user_query_construct', array( &$this ) );
 
@@ -279,6 +287,12 @@ class BP_User_Query {
 				$sql['orderby'] = "ORDER BY u.date_recorded";
 				$sql['order']   = "DESC";
 
+				// Date query.
+				$date_query = BP_Date_Query::get_where_sql( $date_query, 'u.date_recorded' );
+				if ( ! empty( $date_query ) ) {
+					$sql['where']['date_query'] = $date_query;
+				}
+
 				break;
 
 			// 'active', 'newest', and 'random' queries
@@ -299,6 +313,12 @@ class BP_User_Query {
 				} else {
 					$sql['orderby'] = "ORDER BY u.date_recorded";
 					$sql['order'] = "DESC";
+				}
+
+				// Date query.
+				$date_query = BP_Date_Query::get_where_sql( $date_query, 'u.date_recorded' );
+				if ( ! empty( $date_query ) ) {
+					$sql['where']['date_query'] = $date_query;
 				}
 
 				break;
@@ -473,8 +493,8 @@ class BP_User_Query {
 		 *
 		 * @since 2.0.0
 		 *
-		 * @param array         $sql  Array of SQL clauses to be used in the query.
-		 * @param BP_User_Query $this Current BP_User_Query instance.
+		 * @param array         $sql        Array of SQL clauses to be used in the query.
+		 * @param BP_User_Query $user_query Current BP_User_Query instance.
 		 */
 		$sql = apply_filters_ref_array( 'bp_user_query_uid_clauses', array( $sql, &$this ) );
 
@@ -490,7 +510,7 @@ class BP_User_Query {
 		 *
 		 * @since 1.7.0
 		 *
-		 * @param BP_User_Query $this Current BP_User_Query instance. Passed by reference.
+		 * @param BP_User_Query $query Current BP_User_Query instance. Passed by reference.
 		 */
 		do_action_ref_array( 'bp_pre_user_query', array( &$this ) );
 	}
@@ -528,8 +548,8 @@ class BP_User_Query {
 			 *
 			 * @since 1.7.0
 			 *
-			 * @param string        $value SQL statement to select FOUND_ROWS().
-			 * @param BP_User_Query $this  Current BP_User_Query instance.
+			 * @param string        $value      SQL statement to select FOUND_ROWS().
+			 * @param BP_User_Query $user_query Current BP_User_Query instance.
 			 */
 			$this->total_users = $wpdb->get_var( apply_filters( 'bp_found_user_query', "SELECT FOUND_ROWS()", $this ) );
 		} elseif ( 'count_query' == $this->query_vars['count_total'] ) {
@@ -558,8 +578,8 @@ class BP_User_Query {
 		 *
 		 * @since 1.7.0
 		 *
-		 * @param array         $value Array of arguments for the user query.
-		 * @param BP_User_Query $this  Current BP_User_Query instance.
+		 * @param array         $value      Array of arguments for the user query.
+		 * @param BP_User_Query $user_query Current BP_User_Query instance.
 		 */
 		$wp_user_query = new WP_User_Query( apply_filters( 'bp_wp_user_query_args', array(
 
@@ -676,7 +696,7 @@ class BP_User_Query {
 		 *
 		 * @since 1.7.0
 		 *
-		 * @param BP_User_Query $this         Current BP_User_Query instance.
+		 * @param BP_User_Query $user_query   Current BP_User_Query instance.
 		 * @param string        $user_ids_sql Comma-separated string of user IDs.
 		 */
 		do_action_ref_array( 'bp_user_query_populate_extras', array( $this, $user_ids_sql ) );

@@ -205,6 +205,8 @@ function bp_version_updater() {
 
 	// Install BP schema and activate only Activity and XProfile.
 	if ( bp_is_install() ) {
+		// Set the first BP major version the plugin was installed.
+		bp_update_option( '_bp_initial_major_version', bp_get_major_version() );
 
 		// Apply schema and set Activity and XProfile components as active.
 		bp_core_install( $default_components );
@@ -278,6 +280,17 @@ function bp_version_updater() {
 		if ( $raw_db_version < 12850 ) {
 			bp_update_to_8_0();
 		}
+
+		// Version 10.0.0.
+		if ( $raw_db_version < 13165 ) {
+			bp_update_to_10_0();
+		}
+
+		// Version 11.0.0.
+		if ( $raw_db_version < 13271 ){
+			bp_update_to_11_0();
+		}
+
 	}
 
 	/* All done! *************************************************************/
@@ -699,6 +712,82 @@ function bp_core_get_8_0_upgrade_email_schema( $emails ) {
 
 	if ( isset( $emails['bp-members-invitation'] ) ) {
 		$new_emails['bp-members-invitation'] = $emails['bp-members-invitation'];
+	}
+
+	return $new_emails;
+}
+
+/**
+ * 10.0.0 update routine.
+ *
+ * - Install new BP Emails for membership requests.
+ *
+ * @since 10.0.0
+ */
+function bp_update_to_10_0() {
+
+	// Install membership request emails.
+	add_filter( 'bp_email_get_schema', 'bp_core_get_10_0_upgrade_email_schema' );
+
+	bp_core_install_emails();
+
+	remove_filter( 'bp_email_get_schema', 'bp_core_get_10_0_upgrade_email_schema' );
+}
+
+/**
+ * Select only the emails that need to be installed with version 10.0.
+ *
+ * @since 10.0.0
+ *
+ * @param array $emails The array of emails schema.
+ */
+function bp_core_get_10_0_upgrade_email_schema( $emails ) {
+	$new_emails = array();
+
+	if ( isset( $emails['members-membership-request'] ) ) {
+		$new_emails['members-membership-request'] = $emails['members-membership-request'];
+	}
+
+	if ( isset( $emails['members-membership-request-rejected'] ) ) {
+		$new_emails['members-membership-request-rejected'] = $emails['members-membership-request-rejected'];
+	}
+
+	return $new_emails;
+}
+
+/**
+ * 11.0.0 update routine.
+ *
+ * - Install new BP Emails for group membership requests which is completed by admin.
+ *
+ * @since 11.0.0
+ */
+function bp_update_to_11_0() {
+	bp_delete_option( '_bp_ignore_deprecated_code' );
+
+	add_filter( 'bp_email_get_schema', 'bp_core_get_11_0_upgrade_email_schema' );
+
+	bp_core_install_emails();
+
+	remove_filter( 'bp_email_get_schema', 'bp_core_get_11_0_upgrade_email_schema' );
+}
+
+/**
+ * Select only the emails that need to be installed with version 11.0.
+ *
+ * @since 11.0.0
+ *
+ * @param array $emails The array of emails schema.
+ */
+function bp_core_get_11_0_upgrade_email_schema( $emails ) {
+	$new_emails = array();
+
+	if ( isset( $emails['groups-membership-request-accepted-by-admin'] ) ) {
+		$new_emails['groups-membership-request-accepted-by-admin'] = $emails['groups-membership-request-accepted-by-admin'];
+	}
+
+	if ( isset( $emails['groups-membership-request-rejected-by-admin'] ) ) {
+		$new_emails['groups-membership-request-rejected-by-admin'] = $emails['groups-membership-request-rejected-by-admin'];
 	}
 
 	return $new_emails;

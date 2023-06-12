@@ -80,7 +80,7 @@ window.bp = window.bp || {};
 			 * checked during the upload process to eventually adapt the resized avatar.
 			 */
 			if ( 'bp_avatar_upload' ===  uploader.settings.multipart_params.action ) {
-				 uploader.settings.multipart_params.bp_params.ui_available_width = container.width();
+				uploader.settings.multipart_params.bp_params.ui_available_width = container.width();
 			}
 
 			if ( uploader.features.dragdrop && ! self.params.browser.mobile ) {
@@ -159,6 +159,13 @@ window.bp = window.bp || {};
 
 				// Ignore failed uploads.
 				if ( plupload.FAILED === file.status ) {
+					return;
+				}
+
+				if ( file.type === 'image/webp' && uploader.settings.webp_upload_error ) {
+					// Disallow uploading of WebP images if the server cannot edit them.
+					$( self ).trigger( 'bp-uploader-warning', self.strings.noneditable_image );
+					uploader.removeFile( file );
 					return;
 				}
 
