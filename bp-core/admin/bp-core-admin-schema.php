@@ -613,6 +613,20 @@ function bp_core_install_nonmember_opt_outs() {
 	$charset_collate = $GLOBALS['wpdb']->get_charset_collate();
 	$optouts_class   = new BP_Optout();
 	$table_name      = $optouts_class->get_table_name();
+
+    // XTEC ************ MODIFICAT - Fixed error when updating table bp_optouts. Key in user_id causes crash in MySQL 5.7 and higher.
+    // 2023.07.10 @aginard
+    $sql = "CREATE TABLE {$table_name} (
+		id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		email_address_hash varchar(255) NOT NULL,
+		user_id bigint(20) NOT NULL,
+		email_type varchar(255) NOT NULL,
+		date_modified datetime NOT NULL,
+		KEY email_type (email_type),
+		KEY date_modified (date_modified)
+		) {$charset_collate};";
+    // ************ ORIGINAL
+    /*
 	$sql             = "CREATE TABLE {$table_name} (
 		id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		email_address_hash varchar(255) NOT NULL,
@@ -623,6 +637,9 @@ function bp_core_install_nonmember_opt_outs() {
 		KEY email_type (email_type),
 		KEY date_modified (date_modified)
 		) {$charset_collate};";
+    */
+    // ************ FI
+
 	dbDelta( $sql );
 
 	/**
