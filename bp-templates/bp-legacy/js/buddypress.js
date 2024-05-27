@@ -31,12 +31,7 @@ jq( function() {
 	if ( $whats_new.length && bp_get_querystring('r') ) {
 		var $member_nicename = $whats_new.val();
 
-		// XTEC ************ ELIMINAT - Disable slideDown
-		// 2020.02.11 @jmeler
-		/*
 		jq('#whats-new-options').slideDown();
-		*/
-		//************ FI
 
 		$whats_new.animate({
 			height:'3.8em'
@@ -49,29 +44,18 @@ jq( function() {
 
 		$whats_new.val('').trigger( 'focus' ).val( $member_nicename );
 	} else {
-		// XTEC ************ ELIMINAT - Don't hide options
-		// 2020.02.11 @jmeler
-		/*
 		jq('#whats-new-options').hide();
-		*/
-		//************ FI
 	}
 
 	/**** Activity Posting ********************************************************/
 
 	/* Textarea focus */
 	$whats_new.on( 'focus', function() {
-
-		// XTEC ************ ELIMINAT - Disable slideDown
-		// 2020.02.11 @jmeler
-		/*
 		jq( '#whats-new-options' ).slideDown();
 
 		jq( this ).animate({
 			height:'3.8em'
 		});
-		*/
-		//************ FI
 
 		jq('#aw-whats-new-submit').prop('disabled', false);
 
@@ -112,16 +96,11 @@ jq( function() {
 					return;
 				}
 
-				// XTEC ************ ELIMINAT - Disable slideUp
-				// 2020.02.11 @jmeler
-				/*
 				$whats_new.animate({
 					height:'2.2em'
 				});
 
 				jq( '#whats-new-options' ).slideUp();
-				*/
-				//************ FI
 
 				jq('#aw-whats-new-submit').prop( 'disabled', true );
 
@@ -170,16 +149,7 @@ jq( function() {
 		/* Default POST values */
 		object = '';
 		item_id = jq('#whats-new-post-in').val();
-
-		// XTEC ************ MODIFICAT - Get the data to be posted in the wall from the iframe
-		// 2021.10.05 @aginard
-		var content = jq('#whats-new_ifr').contents().find('#tinymce').html();
-		//************ ORIGINAL
-		/*
 		content = jq('#whats-new').val();
-		*/
-		// ************ FI
-
 		firstrow = jq( '#buddypress ul.activity-list li' ).first();
 		activity_row = firstrow;
 		timestamp = null;
@@ -270,17 +240,12 @@ jq( function() {
 				activity_last_recorded  = 0;
 			}
 
-			// XTEC ************ ELIMINAT - Don't hide update button after publish activity
-			// 2020.02.13 @aginard
-			/*
 			jq('#whats-new-options').slideUp();
 			jq('#whats-new-form textarea').animate({
 				height:'2.2em'
 			});
 			jq('#aw-whats-new-submit').prop('disabled', true).removeClass('loading');
 			jq( '#whats-new-content' ).removeClass( 'active' );
-			*/
-			//************ FI
 		});
 
 		return false;
