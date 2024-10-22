@@ -174,6 +174,11 @@ jq( function() {
 		// XTEC ************ MODIFICAT - Get the data to be posted in the wall from the iframe
 		// 2021.10.05 @aginard
 		var content = jq('#whats-new_ifr').contents().find('#tinymce').html();
+
+		// For compatibility with the original code (no TinyMCE editor)
+		if (content === undefined) {
+			content = jq('#whats-new').val();
+		}
 		//************ ORIGINAL
 		/*
 		content = jq('#whats-new').val();
