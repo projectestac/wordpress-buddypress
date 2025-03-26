@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since 3.0.0
  */
+#[AllowDynamicProperties]
 class BP_Buttons_Group {
 
 	/**
@@ -156,7 +157,7 @@ class BP_Buttons_Group {
 	 * @since 9.0.0
 	 *
 	 * @param array $args Required. See the __constructor for a description of this argument.
-	 * @return bool true on success, false on failure to add.
+	 * @return bool
 	 */
 	private function add( $args ) {
 		$r = bp_parse_args(

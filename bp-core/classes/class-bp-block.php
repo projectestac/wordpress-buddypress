@@ -8,9 +8,7 @@
  */
 
 // Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * BP Block Class.
@@ -18,10 +16,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 6.0.0
  */
 class BP_Block {
+
 	/**
 	 * WP Block Type object.
 	 *
 	 * @since 6.0.0
+	 *
 	 * @var WP_Block_Type|WP_Error
 	 */
 	public $block;
@@ -30,6 +30,7 @@ class BP_Block {
 	 * The script types registered.
 	 *
 	 * @since 6.0.0
+	 *
 	 * @var array
 	 */
 	private $registered_scripts;
@@ -38,6 +39,7 @@ class BP_Block {
 	 * The style types registered.
 	 *
 	 * @since 6.0.0
+	 *
 	 * @var array
 	 */
 	private $registered_styles;
@@ -195,9 +197,9 @@ class BP_Block {
 
 			if ( ! isset( $this->registered_scripts['editor_script'] ) || ! $this->registered_scripts['editor_script'] ) {
 				$this->block = new WP_Error( 'script_registration_error', __( 'The required `editor_script` could not be registered.', 'buddypress' ) );
-			} else {
+
 				// Register the styles.
-				$registered_styles = array();
+			} else {
 
 				foreach ( array( 'editor_style', 'style' ) as $style_handle_key ) {
 					if ( ! isset( $wp_args[ $style_handle_key ] ) || ! $wp_args[ $style_handle_key ] ) {
@@ -284,7 +286,7 @@ class BP_Block {
 					$translation_domain = apply_filters( 'bp_block_translation_domain', $textdomain, $this->block->editor_script, $name );
 
 					// Try to load the translation.
-					$translated = wp_set_script_translations( $this->block->editor_script, $translation_domain, $translation_dir );
+					wp_set_script_translations( $this->block->editor_script, $translation_domain, $translation_dir );
 				}
 			}
 		}

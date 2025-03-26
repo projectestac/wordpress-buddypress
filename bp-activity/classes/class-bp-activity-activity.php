@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since 1.0.0
  */
+#[AllowDynamicProperties]
 class BP_Activity_Activity {
 
 	/** Properties ************************************************************/
@@ -59,7 +60,7 @@ class BP_Activity_Activity {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	var $primary_link;
+	var $primary_link = '';
 
 	/**
 	 * BuddyPress component the activity item relates to.
@@ -67,7 +68,7 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	var $component;
+	var $component = '';
 
 	/**
 	 * Activity type, eg 'new_blog_post'.
@@ -75,7 +76,7 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	var $type;
+	var $type = '';
 
 	/**
 	 * Description of the activity, eg 'Alex updated his profile.'.
@@ -83,7 +84,7 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	var $action;
+	var $action = '';
 
 	/**
 	 * The content of the activity item.
@@ -91,7 +92,7 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	var $content;
+	var $content = '';
 
 	/**
 	 * The date the activity item was recorded, in 'Y-m-d h:i:s' format.
@@ -99,7 +100,7 @@ class BP_Activity_Activity {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	var $date_recorded;
+	var $date_recorded = '';
 
 	/**
 	 * Whether the item should be hidden in sitewide streams.
@@ -172,6 +173,8 @@ class BP_Activity_Activity {
 	 * Populate the object with data about the specific activity item.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 */
 	public function populate() {
 		global $wpdb;
@@ -225,6 +228,8 @@ class BP_Activity_Activity {
 	 * Save the activity item to the database.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @return WP_Error|bool True on success.
 	 */
@@ -298,7 +303,7 @@ class BP_Activity_Activity {
 		}
 
 		if ( empty( $this->primary_link ) ) {
-			$this->primary_link = bp_loggedin_user_domain();
+			$this->primary_link = bp_loggedin_user_url();
 		}
 
 		// If we have an existing ID, update the activity item, otherwise insert it.
@@ -348,6 +353,8 @@ class BP_Activity_Activity {
 	 *      'filter' parameter.
 	 * @see WP_Meta_Query::queries for a description of the 'meta_query'
 	 *      parameter format.
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @param array $args {
 	 *     An array of arguments. All items are optional.
@@ -880,6 +887,8 @@ class BP_Activity_Activity {
 	 *
 	 * @since 2.0.0
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @param array $activity_ids Array of activity IDs.
 	 * @return array
 	 */
@@ -1049,6 +1058,8 @@ class BP_Activity_Activity {
 	 *
 	 * @since 1.8.0
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @param array $meta_query An array of meta_query filters. See the
 	 *                          documentation for WP_Meta_Query for details.
 	 * @return array $sql_array 'join' and 'where' clauses.
@@ -1056,24 +1067,28 @@ class BP_Activity_Activity {
 	public static function get_meta_query_sql( $meta_query = array() ) {
 		global $wpdb;
 
+		// Default array keys & empty values.
 		$sql_array = array(
 			'join'  => '',
 			'where' => '',
 		);
 
-		if ( ! empty( $meta_query ) ) {
-			$activity_meta_query = new WP_Meta_Query( $meta_query );
-
-			// WP_Meta_Query expects the table name at
-			// $wpdb->activitymeta.
-			$wpdb->activitymeta = buddypress()->activity->table_name_meta;
-
-			$meta_sql = $activity_meta_query->get_sql( 'activity', 'a', 'id' );
-
-			// Strip the leading AND - BP handles it in get().
-			$sql_array['where'] = preg_replace( '/^\sAND/', '', $meta_sql['where'] );
-			$sql_array['join']  = $meta_sql['join'];
+		// Bail if no meta query.
+		if ( empty( $meta_query ) ) {
+			return $sql_array;
 		}
+
+		$bp                  = buddypress();
+		$activity_meta_query = new WP_Meta_Query( $meta_query );
+
+		// WP_Meta_Query expects the table name at $wpdb->activitymeta.
+		$wpdb->activitymeta = $bp->activity->table_name_meta;
+
+		$meta_sql = $activity_meta_query->get_sql( 'activity', 'a', 'id' );
+
+		// Strip the leading AND - BP handles it in get().
+		$sql_array['where'] = preg_replace( '/^\sAND/', '', $meta_sql['where'] );
+		$sql_array['join']  = $meta_sql['join'];
 
 		return $sql_array;
 	}
@@ -1232,6 +1247,8 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 * @since 10.0.0 Parameters were made optional.
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @param array $args {
 	 *     An array of arguments. All items are optional.
 	 *     @type int    $user_id           User ID to filter by.
@@ -1343,6 +1360,8 @@ class BP_Activity_Activity {
 	 * Otherwise use the filters.
 	 *
 	 * @since 1.2.0
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @param array $args {
 	 *     @int    $id                Optional. The ID of a specific item to delete.
@@ -1521,11 +1540,13 @@ class BP_Activity_Activity {
 	 *
 	 * @since 1.2.0
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @deprecated 2.3.0
 	 *
 	 * @param array $activity_ids Activity IDs whose comments should be deleted.
 	 * @param bool  $delete_meta  Should we delete the activity meta items for these comments.
-	 * @return bool True on success.
+	 * @return bool
 	 */
 	public static function delete_activity_item_comments( $activity_ids = array(), $delete_meta = true ) {
 		global $wpdb;
@@ -1553,7 +1574,7 @@ class BP_Activity_Activity {
 	 * @since 1.2.0
 	 *
 	 * @param array $activity_ids Activity IDs whose meta should be deleted.
-	 * @return bool True on success.
+	 * @return bool
 	 */
 	public static function delete_activity_meta_entries( $activity_ids = array() ) {
 		$activity_ids = wp_parse_id_list( $activity_ids );
@@ -1822,6 +1843,8 @@ class BP_Activity_Activity {
 	 *
 	 * @since 1.2.0
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @param bool $skip_last_activity If true, components will not be
 	 *                                 included if the only activity type associated with them is
 	 *                                 'last_activity'. (Since 2.0.0, 'last_activity' is stored in
@@ -1857,7 +1880,7 @@ class BP_Activity_Activity {
 
 		for ( $i = 0, $count = count( $activities ); $i < $count; ++$i ) {
 			$title                            = explode( '<span', $activities[$i]['content'] );
-			$activity_feed[$i]['title']       = trim( strip_tags( $title[0] ) );
+			$activity_feed[$i]['title']       = wp_strip_all_tags( $title[0] );
 			$activity_feed[$i]['link']        = $activities[$i]['primary_link'];
 			$activity_feed[$i]['description'] = @sprintf( $activities[$i]['content'], '' );
 			$activity_feed[$i]['pubdate']     = $activities[$i]['date_recorded'];
@@ -1872,6 +1895,8 @@ class BP_Activity_Activity {
 	 * @since 1.5.0
 	 *
 	 * @see BP_Activity_Activity::get_filter_sql()
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @param string     $field The database field.
 	 * @param array|bool $items The values for the IN clause, or false when none are found.
@@ -1971,7 +1996,7 @@ class BP_Activity_Activity {
 
 		if ( ! empty( $filter_array['offset_lower'] ) ) {
 			$sid_sql = absint( $filter_array['offset_lower'] );
-			$filter_sql[] = "a.id < {$sid_sql}";
+			$filter_sql[] = "a.id <= {$sid_sql}";
 		}
 
 		if ( ! empty( $filter_array['since'] ) ) {
@@ -1993,6 +2018,8 @@ class BP_Activity_Activity {
 	 * Get the date/time of last recorded activity.
 	 *
 	 * @since 1.2.0
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @return string ISO timestamp.
 	 */
@@ -2029,6 +2056,8 @@ class BP_Activity_Activity {
 	 *
 	 * @since 1.1.0
 	 *
+	 * @global wpdb $wpdb WordPress database object.
+	 *
 	 * @param string $content The content to filter by.
 	 * @return int|false The ID of the first matching item if found, otherwise false.
 	 */
@@ -2046,6 +2075,8 @@ class BP_Activity_Activity {
 	 * Hide all activity for a given user.
 	 *
 	 * @since 1.2.0
+	 *
+	 * @global wpdb $wpdb WordPress database object.
 	 *
 	 * @param int $user_id The ID of the user whose activity you want to mark hidden.
 	 * @return mixed
