@@ -196,12 +196,30 @@ function bp_members_admin_bar_notifications_dropdown( $notifications = array(), 
 	);
 
 	// Add the top-level Notifications button.
+	// XTEC ************ MODIFICAT - Show the Notifications menu only to the xtecadmin user.
+	// 2025.05.27 @corentin.robin
+	if (is_user_logged_in()) {
+		$current_user = wp_get_current_user();
+
+		if (is_xtecadmin()) {
+			$wp_admin_bar->add_node( array(
+				'parent' => 'top-secondary',
+				'id'     => 'bp-notifications',
+				'title'  => $menu_title,
+				'href'   => $menu_link,
+			) );
+		}
+	}
+	// ************ ORIGINAL
+	/*
 	$wp_admin_bar->add_node( array(
 		'parent' => 'top-secondary',
 		'id'     => 'bp-notifications',
 		'title'  => $menu_title,
 		'href'   => $menu_link,
 	) );
+	*/
+	// ************ FI
 
 	if ( ! empty( $notifications ) ) {
 		foreach ( (array) $notifications as $notification ) {
